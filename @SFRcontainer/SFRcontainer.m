@@ -5,7 +5,11 @@ classdef SFRcontainer < dynamicprops
   %   this class defines the file-type, the file location and other attributes
   %   associated with a set of data-files.
   %
-  %   SFRCONTAINER(TYPE, ROOTID, SUBPATH, FILES, VARARGIN) 
+  %   SFRCONTAINER(TYPE, ROOTID, SUBPATH, FILES)
+  %
+  %   SFRCONTAINER(TYPE, ROOTID, SUBPATH, FILES, TYPEATTR)
+  %
+  %   SFRCONTAINER(TYPE, ROOTID, SUBPATH, FILES, TYPEATTR, DATAATTR)
 
   
   % Copyright (c) 2012, J.B.Wagenaar
@@ -36,7 +40,8 @@ classdef SFRcontainer < dynamicprops
   end
   
   methods
-    function obj = SFRcontainer(type, rootID, subPath, files, typeAttr, dataAttr)
+    function obj = SFRcontainer(type, rootID, subPath, files, ...
+      typeAttr, dataAttr)
       
       % Allow constructor without elements.
       if nargin == 0; return; end
@@ -135,6 +140,23 @@ classdef SFRcontainer < dynamicprops
  
     end
 
+    function cleanup(obj)
+      %CLEANUP  removes data from transient properties
+      %   CLEANUP(OBJ) removes data from transient properties to allow Matlab to
+      %   perform garbage collection and make more memory available.
+      %
+      %   This means that the USERDATA and FETCHCACHE should only be used to
+      %   store variable temporarily and no methods should ever rely on data
+      %   being available in these properties. 
+      %
+      %   These properties are meant to store temporary variable to improve
+      %   performance, such as memmapfiles and previously fetched data.
+      
+      obj.userData   = [];
+      obj.fetchCache = [];
+      
+    end
+    
   end
     
   methods (Static)
@@ -219,7 +241,6 @@ classdef SFRcontainer < dynamicprops
       
     end
 
-    
   end
   
 end
