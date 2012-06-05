@@ -1,4 +1,4 @@
-classdef SciFileRepos < dynamicprops
+classdef SCIFileRepos < dynamicprops
 
   properties (SetAccess = private)
     typeId   = '' % Type of the repository, restricted options
@@ -18,7 +18,7 @@ classdef SciFileRepos < dynamicprops
   end
   
   methods
-    function obj = SciFileRepos(rootID, subPath, files, type, varargin)
+    function obj = SCIFileRepos(rootID, subPath, files, type, varargin)
       
       if nargin == 0
         return
