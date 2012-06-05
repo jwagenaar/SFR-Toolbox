@@ -1,4 +1,4 @@
-classdef SCIFilesRepos < dynamicprops
+classdef SFRcontainer < dynamicprops
 
   
   % Copyright (c) 2012, J.B.Wagenaar
@@ -27,7 +27,7 @@ classdef SCIFilesRepos < dynamicprops
   end
   
   methods
-    function obj = SCIFilesRepos(rootID, subPath, files, type, varargin)
+    function obj = SFRcontainer(rootID, subPath, files, type, varargin)
       
       if nargin == 0
         return
@@ -126,7 +126,7 @@ classdef SCIFilesRepos < dynamicprops
         out = rootStruct;
         return
       else
-        rootStruct = HDSFileRepos.loadReposStruct(locId, fileName);
+        rootStruct = SFRcontainer.loadReposStruct(locId, fileName);
         curPath = fileName;
         curLocId = locId;
         out = rootStruct;
