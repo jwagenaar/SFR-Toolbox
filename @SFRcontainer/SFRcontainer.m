@@ -1,4 +1,11 @@
 classdef SFRcontainer < dynamicprops
+  %SFRCONTAINER  Scientific File Repository container
+  %   This class is used to package a set of files and provide standardized
+  %   syntax for accessing data from these files. The contents of an object of
+  %   this class defines the file-type, the file location and other attributes
+  %   associated with a set of data-files.
+  %
+  %   SFRCONTAINER(TYPE, ROOTID, SUBPATH, FILES, VARARGIN) 
 
   
   % Copyright (c) 2012, J.B.Wagenaar
@@ -11,10 +18,10 @@ classdef SFRcontainer < dynamicprops
   
   properties (SetAccess = private)
     typeId   = '' % Type of the repository, restricted options
-    typeAttr = {} % Attributes for type, depending on type definition.
     rootId   = '' % Root Identifier
     subPath  = '' % Location to files from root.
     files    = {} % FileNames Rows are channels, columns are blocks
+    typeAttr = {} % Attributes for type, depending on type definition.
   end
 
   properties (Transient, Hidden)
@@ -22,65 +29,112 @@ classdef SFRcontainer < dynamicprops
     fetchCache  = []  % Holds data if necessary.
   end
 
-  properties (Hidden)
-    attrList = []     % Pointers to the dynamic attribute list.
+  properties (Access = private, Hidden)
+    attrList      % Pointers to the dynamic attribute list.
+    dataFcn       % Function handle for getting data.
+    attrFcn       % Function handle for getting attributes.
   end
   
   methods
-    function obj = SFRcontainer(rootID, subPath, files, type, varargin)
+    function obj = SFRcontainer(type, rootID, subPath, files, typeAttr, dataAttr)
       
-      if nargin == 0
-        return
-      end
+      % Allow constructor without elements.
+      if nargin == 0; return; end
       
-      assert(any(strcmp(type,{'BinByChannel' 'mef' 'cheetah'})), ...
-        'Uncompatible Type');
-      obj.typeId = type;
-      obj.rootId = rootID;
+      % Otherwise, at least 4 inputs.
+      error(nargchk(4, 6, nargin));
+      
+      % check inputs:
+      assert(ischar(type), 'Incorrect input value for TYPE.');
+      assert(ischar(rootID), 'Incorrect input value for ROOTID.');
+      assert(ischar(subPath), 'Incorrect input value for SUBPATH.');
+      assert(iscell(files),  'Incorrect input value for FILES.');
+      
+      assert(all(cellfun('isclass', files, 'char')), ...
+        'Each cell in the FILES input should contain a string.')
+      
+      obj.typeId  = type;
+      obj.rootId  = rootID;
       obj.subPath = subPath;
-      obj.files = files;
+      obj.files   = files;
       
-      if nargin > 3
-        names = varargin(1:2:(end-1));
-        values = varargin(2:2:end);
+      % Set functionHandles
+      obj.dataFcn = str2func(sprintf('get%s',type));
+      obj.attrFcn = str2func(sprintf('attr%s',type));
+      
+      if nargin > 4
+        assert(iscell(typeAttr) && isvector(typeAttr), ...
+          'TYPEATTR input has to be a vector of cells.')
+        assert(mod(length(typeAttr),2)==0, ...
+          'TYPEATTR should have an even number of cells.');
+
+        names = typeAttr(1:2:(end-1));
+        assert(all(cellfun('isclass', names, 'char')), ...
+        'TYPEATTR names should be strings.')
+        
+        values = typeAttr(2:2:end);
         for i = 1: length(names)
           obj.typeAttr.(names{i}) = values{i};
         end
       end
       
+      if nargin == 6
+        assert(iscell(dataAttr) && isvector(dataAttr), ...
+          'DATAATTR input has to be a vector of cells.')
+        assert(mod(length(dataAttr),2)==0, ...
+          'DATAATTR should have an even number of cells.');
+
+        names = dataAttr(1:2:(end-1));
+        assert(all(cellfun('isclass', names, 'char')), ...
+        'DATAATTR names should be strings.')
         
-     
+        obj = addattr(obj, dataAttr{:});
+      
+      end
     end
 
-    function obj = addattr(obj,varargin)
+    function obj = addattr(obj, varargin)
       %ADDATTR  Adds an attribute to HDSFILEREPOS
       %   OBJ = ADDATTR(OBJ, 'name', Value, ...)
       
-      addprop(obj,varargin{1});
-      obj.(varargin{1}) = varargin{2};
-      obj.attrList = {obj.attrList varargin{1}};
-    end
-    function data = getData(obj, channels, indeces)
-      switch obj.typeId
-        case 'BinByChannel'
-          data = getBinByChannel(obj, channels, indeces);
-          
+      assert(mod(length(varargin),2)==0, ...
+        'Incorrect number input arguments.');
+      names = varargin(1:2:(end-1));
+      assert(all(cellfun('isclass', names, 'char')), ...
+        'Attribute names should be strings.')
+      
+      values = varargin(2:2:end);
+      for i = 1: length(names)
+        if isempty(findprop(obj,names{i}))
+          addprop(obj,names{i});
+        end
+        obj.(names{i}) = values{i};
+        obj.attrList = {obj.attrList names{i}};
       end
+    end
+    
+    function data = getdata(obj, channels, indeces)
+      %GETDATA  Returns data from repository.
+      data = obj.dataFcn(obj,channels,indeces);
     end
     
     function attr = getAttr(obj)
+      %GETATTR  Returns attributes associated with data files
+      %   ATTR = GETATTR(OBJ) returns a structure with attributes associated
+      %   with OBJ. These attributes can either be added to OBJ using the
+      %   ADDATTR method, or are returned by the ATTR method that is associated
+      %   with the type of data stored in this object.
+      %
+      %   see also: ADDATTR GETDATA
       
-      attr = struct('chNames',[], 'sf' , obj.sf);
-      attr.chNames = obj.chNames;
-      switch obj.typeID
-        case 'BinByChannel'
-          attr = attrBinByChannel(obj, attr);
-          
-      end
+      attr = struct();
+      for iAttr = 1: length(obj.attrList)
+        attr.(obj.attrList(iAttr)) = obj.(obj.attrList(iAttr));
+      end     
+      attr = obj.attrFcn(obj, attr);
+ 
     end
-    
-    data = getuintbinbychannel(obj, channels, indeces);
-    
+
   end
     
   methods (Static)
