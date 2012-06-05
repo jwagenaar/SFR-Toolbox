@@ -1,5 +1,13 @@
 function data = getBinByChannel(obj, channels, indeces)
-      
+
+
+  % Copyright (c) 2012, J.B.Wagenaar
+  % This source file is subject to version 3 of the GPL license, 
+  % that is bundled with this package in the file LICENSE, and is 
+  % available online at http://www.gnu.org/licenses/gpl.txt
+  %
+  % This source file can be linked to GPL-incompatible facilities, 
+  % produced or made available by MathWorks, Inc.
   
   % Check attributes
   fNames = fieldnames(obj.typeAttr);
@@ -10,8 +18,8 @@ function data = getBinByChannel(obj, channels, indeces)
   
   data = zeros(length(indeces),length(channels),format);
 
-  curRoot = obj.hdsreposoption();
-  curRoot = curRoot.(obj.rootId
+  curRoot = obj.getrepos();
+  curRoot = curRoot.(obj.rootId);
   
   for iChan = 1: length(channels)
     path = fullfile(curRoot, obj.subPath, obj.files{iChan});
