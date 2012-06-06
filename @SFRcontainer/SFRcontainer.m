@@ -5,11 +5,55 @@ classdef SFRcontainer < dynamicprops
   %   this class defines the file-type, the file location and other attributes
   %   associated with a set of data-files.
   %
-  %   SFRCONTAINER(TYPE, ROOTID, SUBPATH, FILES)
+  %   SFRCONTAINER(TYPE, ROOTID, SUBPATH, FILES) creates a SFRContainer object
+  %   that handles files of a specific TYPE. 
+  %     
+  %     TYPE is a string that identifies the type and should match available
+  %     specific GET- and ATTR-methods (see below).
+  %     
+  %     ROOTID is a string that identifies the repository location. The ROOTID
+  %     should be matched with one of the location tags in the location XML
+  %     file.
   %
-  %   SFRCONTAINER(TYPE, ROOTID, SUBPATH, FILES, TYPEATTR)
+  %     SUBPATH is the location of the files with respect to the repository
+  %     location that is specified in the XML-file under the tag ROOTID.
   %
-  %   SFRCONTAINER(TYPE, ROOTID, SUBPATH, FILES, TYPEATTR, DATAATTR)
+  %     FILES is a 1D or 2D cell array of filenames of the raw data. There are 3
+  %     scenarios that are possible:
+  %       1) Separate by channel:  The cell array should be a 1D vector of
+  %       cells. Each cell contains the filename associated with the channel
+  %       index for that cell.
+  %          
+  %       2) Separate by block:  The cell array should be a 1D vector of
+  %       cells. Each cell contains the filename associated with a block of
+  %       data, where each block contains all channels during a subset of time.
+  %
+  %       3) Separate by channel and block:  The cell array should be a 2D array
+  %       of cells. Each row contains filenames associated with data for a
+  %       single channel and the columns are associated with a differnt block of
+  %       data for that single channel.
+  %
+  %   SFRCONTAINER(..., TYPEATTR) The TYPEATTR input can be added to specify
+  %   attributes that are required by the method that loads the data from the
+  %   referenced data files. TYPEATTR should be a 1D cell array with alternating
+  %   'attributeName' and 'attributeValue'.
+  %
+  %     For example: TYPEATTR = {'dataClass' 'double'}
+  %
+  %   SFRCONTAINER(..., TYPEATTR, DATAATTR) The DATAATTR method can be used to
+  %   add properties and associated values to the current object. The DATAATTR
+  %   input should be a 1D cell array with alternating 'attributeName' and
+  %   'attributeValue'.
+  %
+  %   Some filetypes will contain meta-data information inside the file while
+  %   other filetypes do not have this information embedded. In this case,
+  %   meta-data assiated with the data in the files, such as channel names can
+  %   be added directly to the object as an attribute. 
+  %
+  %     For example: DATAATTR = {'chNames' {'Ch1' 'Ch2' 'Ch3' 'Ch4'}}
+  %
+  %
+  %   See also: ADDATTR GETDATA GETATTR CLEANUP
 
   
   % Copyright (c) 2012, J.B.Wagenaar
@@ -120,6 +164,16 @@ classdef SFRcontainer < dynamicprops
     
     function data = getdata(obj, channels, indeces)
       %GETDATA  Returns data from repository.
+      %   DATA = GETDATA(OBJ, CHANNELS, INDECES) returns the data for the
+      %   current object as a 2D array. CHANNELS is a vector of indeces that
+      %   indicate the channels that should be returned. INDECES is a vector of
+      %   numbers that indicate the indices that should be returned.
+      %
+      %   Note that the CHANNELS input is referenced in respect to the
+      %   file-names of the FILES property. It is possible that index 1 does not
+      %   point to channel 1, depending on how the files are arranged in the
+      %   object.
+      
       data = obj.dataFcn(obj,channels,indeces);
     end
     
@@ -155,6 +209,24 @@ classdef SFRcontainer < dynamicprops
       obj.userData   = [];
       obj.fetchCache = [];
       
+    end
+    
+    function obj = addprop(obj, propName)
+      try
+        aux = dbstack;
+
+        assert(length(aux)>1, 'ADDPROP:DirectAcces',...
+          ['Please use the ADDATTR method to add attributes (properties) '...
+          'to the object.']);
+        assert(strcmp(aux(2).name,'SFRcontainer.addattr'),'ADDPROP:DirectAcces',...
+          ['Please use the ADDATTR method to add attributes (properties) '...
+          'to the object.']); 
+
+        addprop@dynamicprops(obj, propName);
+      catch ME
+        throwAsCaller(MException(ME.identifier,...
+          ['SFRCONTAINER.ADDPROP: ' ME.message]));
+      end
     end
     
   end
