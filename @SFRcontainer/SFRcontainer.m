@@ -83,8 +83,10 @@ classdef SFRcontainer < dynamicprops
     attrList      % Pointers to the dynamic attribute list.
     dataFcn       % Function handle for getting data.
     attrFcn       % Function handle for getting attributes.
-    sizeFcn       % Function handle for getting size of data.
+    infoFcn       % Function handle for getting size of data.
     dataSize      % 1x2 vector of data size [nrValues nrChannels]
+    reqAttr       % Cell array with required Attributes 
+    optAttr       % Cell array with optional Attributes.
   end
   
   methods
@@ -120,7 +122,7 @@ classdef SFRcontainer < dynamicprops
         % Set functionHandles
         obj.dataFcn = str2func(sprintf('get%s',type));
         obj.attrFcn = str2func(sprintf('attr%s',type));
-        obj.sizeFcn = str2func(sprintf('size%s',type));
+        obj.infoFcn = str2func(sprintf('info%s',type));
 
         if nargin > 4
           assert(iscell(typeAttr) && isvector(typeAttr), ...
@@ -158,7 +160,7 @@ classdef SFRcontainer < dynamicprops
         end
         
         % Add size info to data prop.
-        [sz frmt] = sizeInfo(obj);
+        [sz frmt obj.reqAttr obj.optAttr] = typeinfo(obj);
         sizestr = [num2str(sz(1)) sprintf('x%d',sz(2:end))];
         obj.data = sprintf('[%s %s]',sizestr, frmt);
         obj.dataSize = sz;
@@ -267,8 +269,8 @@ classdef SFRcontainer < dynamicprops
       end
     end
     
-    function [sz frmt] = sizeInfo(obj)
-      [sz frmt] = obj.sizeFcn(obj);
+    function [sz frmt reqAttr optAttr] = typeinfo(obj)
+      [sz frmt reqAttr optAttr] = obj.infoFcn(obj);
     end
     
     function data = getdata(obj, channels, indeces)

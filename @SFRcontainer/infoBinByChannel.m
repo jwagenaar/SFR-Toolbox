@@ -1,10 +1,12 @@
-function [sizeInfo format] = sizeBinByChannel(obj)
+function [sizeInfo format, requiredAttr, optionalAttr] = infoBinByChannel(obj)
   %SIZEBINBYCHANNEL returns the size of the data in the repos.
   %
   %   This method should return a 1x2 numeric vector where the first index is
   %   the number of channels and the second index is the number of values per
   %   channel.
   
+  requiredAttr = {};
+  optionalAttr = {'decimation'};
   
   % Find number of channels.
   nrChannels = length(obj.files);
