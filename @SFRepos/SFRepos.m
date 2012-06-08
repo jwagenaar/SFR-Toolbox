@@ -69,14 +69,14 @@ classdef SFRepos < dynamicprops
     rootId   = '' % Root Identifier
     subPath  = '' % Location to files from root.
     files    = {} % FileNames Rows are channels, columns are blocks
-    typeAttr = {} % Attributes for type, depending on type definition.
-    data
-    attr
+    typeAttr      % Attributes for type, depending on type definition.
+    data          % Points to the data.
+    attr          % Points to the attributes.
   end
 
   properties (Transient, Hidden)
-    userData    = {}  % Can be used by getMethod to store stuff in object
-    fetchCache  = []  % Holds data if necessary.
+    userData    = {}  % Can be used by getMethod to store stuff in object.
+    fetchCache  = []  % Holds data if the getMethod can utilize this.
   end
 
   properties (Access = private, Hidden)
@@ -84,7 +84,7 @@ classdef SFRepos < dynamicprops
     dataFcn       % Function handle for getting data.
     attrFcn       % Function handle for getting attributes.
     infoFcn       % Function handle for getting size of data.
-    dataSize      % 1x2 vector of data size [nrValues nrChannels]
+    dataInfo      % 1x2 vector of data size [nrValues nrChannels]
     reqAttr       % Cell array with required Attributes 
     optAttr       % Cell array with optional Attributes.
   end
@@ -184,7 +184,7 @@ classdef SFRepos < dynamicprops
         sz = formatinfo(obj, 'size');        
         sizestr = [num2str(sz.size(1)) sprintf('x%d',sz.size(2:end))];
         obj.data = sprintf('[%s %s]',sizestr, sz.format);
-        obj.dataSize = sz;
+        obj.dataInfo = sz;
 
         
       catch ME
@@ -202,7 +202,9 @@ classdef SFRepos < dynamicprops
         if strcmp(s(1).subs,'data')
           switch length(s)
             case 1
-            out = obj.data;
+              chIndeces = 1:obj.dataInfo.size(2);
+              valueIndeces = 1:obj.dataInfo.size(1);
+              out = getdata(obj, chIndeces, valueIndeces);
             case 2
               assert(strcmp(s(2).type,'()'),'SciFileRepos:subsref', ...
                 ['Cannot use any other indexing than ''()'' in the data '...
@@ -212,7 +214,7 @@ classdef SFRepos < dynamicprops
               valueIndeces = s(2).subs{2};
               if ischar(chIndeces)
                 if strcmp(chIndeces,':')
-                  chIndeces = 1:obj.dataSize(2);
+                  chIndeces = 1:obj.dataInfo.size(2);
                 else
                   error('SciFileRepos:subsref', ...
                     'Incorrect indexing of the data property.')
@@ -220,7 +222,7 @@ classdef SFRepos < dynamicprops
               end
               if ischar(valueIndeces)
                 if strcmp(valueIndeces,':')
-                  valueIndeces = 1:obj.dataSize(1);
+                  valueIndeces = 1:obj.dataInfo.size(1);
                 else
                   error('SciFileRepos:subsref', ...
                     'Incorrect indexing of the data property.')
@@ -234,6 +236,8 @@ classdef SFRepos < dynamicprops
                 'of an SFRepos.']);
           end
 
+        elseif strcmp(s(1).subs, 'attr')
+          out = getattr(obj);
         else
           out = builtin('subsref', obj, s);
         end
@@ -279,7 +283,7 @@ classdef SFRepos < dynamicprops
             addprop(obj,names{i});
           end
           obj.(names{i}) = values{i};
-          obj.attrList = {obj.attrList names{i}};
+          obj.attrList{end+1} = names{i};
         end
       catch ME
         isSciFi = false;
@@ -400,21 +404,39 @@ classdef SFRepos < dynamicprops
       end
     end
     
-    function attr = getAttr(obj)
+    function attr = getattr(obj)
       %GETATTR  Returns attributes associated with data files
       %   ATTR = GETATTR(OBJ) returns a structure with attributes associated
       %   with OBJ. These attributes can either be added to OBJ using the
       %   ADDATTR method, or are returned by the ATTR method that is associated
       %   with the type of data stored in this object.
       %
+      %   The method consolidates the TYPEATTR property attributes and the
+      %   object attributes and the attributes returned by the specific
+      %   attribute method for the fileformat.
+      %
+      %   In case an attribute is defined in multiple places, the hierarchy of
+      %   attributes equals: 1) Specific format function, 2) Added object
+      %   attributes, and 3) Type Attributes.
+      %
       %   See also: ADDATTR GETDATA
       
-      attr = struct();
-      for iAttr = 1: length(obj.attrList)
-        attr.(obj.attrList(iAttr)) = obj.(obj.attrList(iAttr));
-      end     
-      attr = obj.attrFcn(obj, attr);
- 
+      try
+        attr = struct();
+        for iAttr = 1: length(obj.typeAttr)
+          attr.(obj.typeAttr{iAttr}) = obj.(obj.typeAttr{iAttr});
+        end   
+        
+        for iAttr = 1: length(obj.attrList)
+          attr.(obj.attrList{iAttr}) = obj.(obj.attrList{iAttr});
+        end    
+        
+        attr = obj.attrFcn(obj, attr);
+      catch ME
+        [err, isScifi] = SFRepos.sfrcheckerror(ME, false);
+        if isScifi; throwAsCaller(err); else rethrow(ME); end;
+      end
+      
     end
 
     function cleanup(obj)
