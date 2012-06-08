@@ -1,4 +1,4 @@
-function data = getBinByChannel(obj, channels, indeces, filePath, varargin)
+function data = getBinByChannel(obj, channels, indeces, filePath, options)
 
 
   % Copyright (c) 2012, J.B.Wagenaar
@@ -9,7 +9,7 @@ function data = getBinByChannel(obj, channels, indeces, filePath, varargin)
   % This source file can be linked to GPL-incompatible facilities, 
   % produced or made available by MathWorks, Inc.
   
-  format = obj.typeAttr.Format;
+  format = options.Format;
   data = zeros(length(indeces),length(channels),format);
   
   for iChan = 1: length(channels)

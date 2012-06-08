@@ -335,7 +335,7 @@ classdef SFRcontainer < dynamicprops
         
         % Look at supplied attributes.
         checkReqAttr = false(length(obj.reqAttr),1);
-        getAttr = cell(20,1);
+        getAttr = struct()
         curIdx = 1;
         if nargin > 3
           assert(mod(length(varargin),2)==0, 'SciFileRepos:getdata',...
@@ -358,7 +358,7 @@ classdef SFRcontainer < dynamicprops
                 'or optional for this fileformat.']);
             end
             
-            getAttr{curIdx:curIdx+1} = [varargin{i} varargin{i+1}];
+            getAttr.(varargin{i}) =  varargin{i+1};
             curIdx = curIdx+2;
           end
         end
@@ -370,7 +370,7 @@ classdef SFRcontainer < dynamicprops
           for i = 1:length(missingAttr)
             try
               value = obj.typeAttr.(missingAttr{i});
-              getAttr(curIdx: curIdx+1) = {missingAttr{i} value};
+              getAttr.(missingAttr{i}) =  value;
               curIdx = curIdx +2 ;
             catch ME
               error('SciFileRepos:getdata', ...
@@ -381,9 +381,7 @@ classdef SFRcontainer < dynamicprops
             end
           end
         end
-        
-        getAttr = getAttr(1:(curIdx-1));
-       
+               
         curRoot = obj.getrepos();
         curRoot = curRoot.(obj.rootId);
         filePath = fullfile(curRoot, obj.subPath);
