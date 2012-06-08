@@ -19,7 +19,7 @@ function sfrsetlocation(varargin)
   % produced or made available by MathWorks, Inc.
   
   try
-    SFRcontainer.getrepos(varargin{:});
+    SFRepos.getrepos(varargin{:});
   catch ME
     if strncmp(ME.identifier, 'SCIFileRepos', 12)
       if ~strncmp(ME.message,'Problem in =',12)
