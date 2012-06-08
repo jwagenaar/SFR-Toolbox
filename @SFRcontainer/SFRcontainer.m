@@ -335,7 +335,7 @@ classdef SFRcontainer < dynamicprops
         
         % Look at supplied attributes.
         checkReqAttr = false(length(obj.reqAttr),1);
-        getAttr = struct()
+        getAttr = struct();
         curIdx = 1;
         if nargin > 3
           assert(mod(length(varargin),2)==0, 'SciFileRepos:getdata',...
@@ -386,7 +386,7 @@ classdef SFRcontainer < dynamicprops
         curRoot = curRoot.(obj.rootId);
         filePath = fullfile(curRoot, obj.subPath);
         
-        data = obj.dataFcn(obj,channels, indeces, filePath, getAttr);
+        data = obj.dataFcn(obj, channels, indeces, filePath, getAttr);
       catch ME
         isScifi = false;
         if strcmp(ME.identifier, 'MATLAB:UndefinedFunction');
