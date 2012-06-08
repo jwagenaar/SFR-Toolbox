@@ -346,7 +346,7 @@ classdef SFRcontainer < dynamicprops
             
             isReq = find(strcmp(varargin{i},obj.reqAttr),1);
             if ~isempty(isReq)
-              checkReqAttr(isReq)
+              checkReqAttr(isReq) = true;
               isReq = true;
             else
               isReq = false;
