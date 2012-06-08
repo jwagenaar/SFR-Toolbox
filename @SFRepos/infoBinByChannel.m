@@ -12,7 +12,7 @@ function out = infoBinByChannel(obj, filePath, option)
       out = struct('requiredAttr',[],'optionalAttr',[]);
       
       out.requiredAttr = {'Format'};
-      out.optionalAttr = {}; 
+      out.optionalAttr = {}; % No optional attributes.
       
     case 'size'
       % Required output structure for case 'size'.
