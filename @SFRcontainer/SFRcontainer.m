@@ -124,6 +124,12 @@ classdef SFRcontainer < dynamicprops
         obj.attrFcn = str2func(sprintf('attr%s',type));
         obj.infoFcn = str2func(sprintf('info%s',type));
 
+        % Get File-Format information
+        attributes = formatinfo(obj, 'attributes');
+        obj.reqAttr = attributes.requiredAttr;
+        obj.optAttr = attributes.optionalAttr;
+        
+        checkReqAttr = false(length(obj.reqAttr),1);
         if nargin > 4
           assert(iscell(typeAttr) && isvector(typeAttr), ...
             'SCIFileRepos:sfrcontainer',...
@@ -136,12 +142,27 @@ classdef SFRcontainer < dynamicprops
           assert(all(cellfun('isclass', names, 'char')), ...
             'SCIFileRepos:sfrcontainer',...
             'TYPEATTR names should be strings.')
-
+          
+          for i = 1:length(names)
+            chIndex = find(strcmp(names{i},obj.reqAttr),1);
+            if ~isempty(chIndex)
+              checkReqAttr(chIndex) = true;
+            else
+              assert(any(strcmp(names{i}, obj.optAttr)),...'
+                'SCIFileRepos:sfrcontainer',...
+                ['Provided TYPE-Attributes are not optional or required for '...
+                'this file-format.']);
+            end
+          end
+          
           values = typeAttr(2:2:end);
           for i = 1: length(names)
             obj.typeAttr.(names{i}) = values{i};
           end
         end
+        
+        assert(all(checkReqAttr),'SCIFileRepos:sfrcontainer', ...
+          'Not all required attributes are set for this file-format');
         
         if nargin == 6
           assert(iscell(dataAttr) && isvector(dataAttr), ...
@@ -160,24 +181,16 @@ classdef SFRcontainer < dynamicprops
         end
         
         % Add size info to data prop.
-        [sz frmt obj.reqAttr obj.optAttr] = typeinfo(obj);
-        sizestr = [num2str(sz(1)) sprintf('x%d',sz(2:end))];
-        obj.data = sprintf('[%s %s]',sizestr, frmt);
+        sz = formatinfo(obj, 'size');        
+        sizestr = [num2str(sz.size(1)) sprintf('x%d',sz.size(2:end))];
+        obj.data = sprintf('[%s %s]',sizestr, sz.format);
         obj.dataSize = sz;
 
         
       catch ME
-        if strncmp(ME.identifier, 'SCIFileRepos', 12)
-          if ~strncmp(ME.message,'Problem in =',12)
-            err = MException(ME.identifier,sprintf('Problem in => %s\n%s',...
-              ME.stack(1).name,ME.message));
-          else
-            err = ME;
-          end
-          throwAsCaller(err);
-        else
-          rethrow(ME);
-        end
+        [err, isScifi] = SFRcontainer.sfrcheckerror(ME, false);
+        if isScifi; throwAsCaller(err); else rethrow(ME); end;
+
       end
       
       
@@ -185,43 +198,57 @@ classdef SFRcontainer < dynamicprops
 
     function varargout = subsref(obj, s)
       
-      if strcmp(s(1).subs,'data')
-        switch length(s)
-          case 1
-          varargout = obj.data;
-          case 2
-            assert(strcmp(s(2).type,'()'),'SciFileRepos:subsref', ...
-              ['Cannot use any other indexing than ''()'' in the data '...
-              'property of an SFRcontainer.']);
-            
-            chIndeces = s(2).subs{1};
-            valueIndeces = s(2).subs{2};
-            if ischar(chIndeces)
-              if strcmp(chIndeces,':')
-                chIndeces = 1:obj.dataSize(2);
-              else
-                error('SciFileRepos:subsref', ...
-                  'Incorrect indexing of the data property.')
-              end
-            end
-            if ischar(valueIndeces)
-              if strcmp(valueIndeces,':')
-                valueIndeces = 1:obj.dataSize(1);
-              else
-                error('SciFileRepos:subsref', ...
-                  'Incorrect indexing of the data property.')
-              end
-            end
-            
-            varargout{1} = getdata(obj,chIndeces,valueIndeces );
-          otherwise
-            error('SciFileRepos:subsref', ...
-              ['Cannot subindex more than one level in the data property '...
-              'of an SFRcontainer.']);
-        end
+      try
+        if strcmp(s(1).subs,'data')
+          switch length(s)
+            case 1
+            out = obj.data;
+            case 2
+              assert(strcmp(s(2).type,'()'),'SciFileRepos:subsref', ...
+                ['Cannot use any other indexing than ''()'' in the data '...
+                'property of an SFRcontainer.']);
 
-      else
-        varargout = builtin('subsref', obj, s);
+              chIndeces = s(2).subs{1};
+              valueIndeces = s(2).subs{2};
+              if ischar(chIndeces)
+                if strcmp(chIndeces,':')
+                  chIndeces = 1:obj.dataSize(2);
+                else
+                  error('SciFileRepos:subsref', ...
+                    'Incorrect indexing of the data property.')
+                end
+              end
+              if ischar(valueIndeces)
+                if strcmp(valueIndeces,':')
+                  valueIndeces = 1:obj.dataSize(1);
+                else
+                  error('SciFileRepos:subsref', ...
+                    'Incorrect indexing of the data property.')
+                end
+              end
+
+              out = getdata(obj, chIndeces, valueIndeces);
+            otherwise
+              error('SciFileRepos:subsref', ...
+                ['Cannot subindex more than one level in the data property '...
+                'of an SFRcontainer.']);
+          end
+
+        else
+          out = builtin('subsref', obj, s);
+        end
+        
+        % Format varargout such that it corresponds with the nargout value.
+        if nargout <= 1
+          varargout = {out};% Nargout equals 1 --> return single cell. 
+        else
+          varargout = out;  % Nargout does not equal 1 --> return cell array. 
+        end
+        
+      catch ME
+        [err, isScifi] = SFRcontainer.sfrcheckerror(ME, false);
+        if isScifi; throwAsCaller(err); else rethrow(ME); end;
+
       end
       
     end
@@ -255,25 +282,39 @@ classdef SFRcontainer < dynamicprops
           obj.attrList = {obj.attrList names{i}};
         end
       catch ME
-        if strncmp(ME.identifier, 'SCIFileRepos', 12)
-          if ~strncmp(ME.message,'Problem in =',12)
-            err = MException(ME.identifier,sprintf('Problem in => %s\n%s',...
-              ME.stack(1).name,ME.message));
-          else
-            err = ME;
-          end
-          throwAsCaller(err);
-        else
-          rethrow(ME);
+        isSciFi = false;
+        if strcmp(ME.identifier, 'MATLAB:UndefinedFunction');
+          isSciFi = true;
         end
+        
+        [err, isScifi] = SFRcontainer.sfrcheckerror(ME, isSciFi);
+        if isScifi; throwAsCaller(err); else rethrow(ME); end;
+
       end
     end
     
-    function [sz frmt reqAttr optAttr] = typeinfo(obj)
-      [sz frmt reqAttr optAttr] = obj.infoFcn(obj);
+    function out = formatinfo(obj, option)
+      
+      try
+        curRoot = obj.getrepos();
+        curRoot = curRoot.(obj.rootId);
+        filePath = fullfile(curRoot, obj.subPath);
+        
+        out = obj.infoFcn(obj, filePath, option);
+      catch ME
+        isSciFi = false;
+        if strcmp(ME.identifier, 'MATLAB:UndefinedFunction');
+          isSciFi = true;
+        end
+        
+        [err, isScifi] = SFRcontainer.sfrcheckerror(ME, isSciFi);
+        if isScifi; throwAsCaller(err); else rethrow(ME); end;
+
+      end
+      
     end
     
-    function data = getdata(obj, channels, indeces)
+    function data = getdata(obj, channels, indeces, varargin)
       %GETDATA  Returns data from repository.
       %   DATA = GETDATA(OBJ, CHANNELS, INDECES) returns the data for the
       %   current object as a 2D array. CHANNELS is a vector of indeces that
@@ -290,7 +331,75 @@ classdef SFRcontainer < dynamicprops
       %
       %   See also: GETATTR
       
-      data = obj.dataFcn(obj,channels,indeces);
+      try
+        
+        % Look at supplied attributes.
+        checkReqAttr = false(length(obj.reqAttr),1);
+        getAttr = cell(20,1);
+        curIdx = 1;
+        if nargin > 3
+          assert(mod(length(varargin),2)==0, 'SciFileRepos:getdata',...
+            'Incorrect number of input arguments.');
+          for i = 1:2:(length(varargin)-1)
+            assert(ischar(varargin{i}),'SciFileRepos:getdata',...
+              'Attribute name should be a string');
+            
+            isReq = find(strcmp(varargin{i},obj.reqAttr),1);
+            if ~isempty(isReq)
+              checkReqAttr(isReq)
+              isReq = true;
+            else
+              isReq = false;
+            end
+            
+            if ~isReq
+              assert(any(strcmp(varargin{i}, obj.optAttr)), ...
+                'SciFileRepos:getdata',['Supplied attribute not required '...
+                'or optional for this fileformat.']);
+            end
+            
+            getAttr{curIdx:curIdx+1} = [varargin{i} varargin{i+1}];
+            curIdx = curIdx+2;
+          end
+        end
+        
+        % Check required attributes
+        if ~all(checkReqAttr)
+          missingAttr = obj.reqAttr(~checkReqAttr);
+          
+          for i = 1:length(missingAttr)
+            try
+              value = obj.typeAttr.(missingAttr{i});
+              getAttr(curIdx: curIdx+1) = {missingAttr{i} value};
+              curIdx = curIdx +2 ;
+            catch ME
+              error('SciFileRepos:getdata', ...
+                ['Missing required attribute: %s\n Attributes for the '...
+                '''get''-method should be supplied in the TYPEATTR property'...
+                'of the object or as additional inputs to the GETDATA method']...
+                , missingAttr{i})
+            end
+          end
+        end
+        
+        getAttr = getAttr(1:(curIdx-1));
+       
+        curRoot = obj.getrepos();
+        curRoot = curRoot.(obj.rootId);
+        filePath = fullfile(curRoot, obj.subPath);
+        
+        data = obj.dataFcn(obj,channels, indeces, filePath, getAttr);
+      catch ME
+        isScifi = false;
+        if strcmp(ME.identifier, 'MATLAB:UndefinedFunction');
+          isScifi = true;
+        end
+        
+        [err, isScifi] = SFRcontainer.sfrcheckerror(ME, isScifi);
+        if isScifi; throwAsCaller(err); else rethrow(ME); end;
+
+
+      end
     end
     
     function attr = getAttr(obj)
@@ -352,17 +461,9 @@ classdef SFRcontainer < dynamicprops
 
         addprop@dynamicprops(obj, propName);
       catch ME
-        if strncmp(ME.identifier, 'SCIFileRepos', 12)
-          if ~strncmp(ME.message,'Problem in =',12)
-            err = MException(ME.identifier,sprintf('Problem in => %s\n%s',...
-              ME.stack(1).name,ME.message));
-          else
-            err = ME;
-          end
-          throwAsCaller(err);
-        else
-          rethrow(ME);
-        end
+        [err, isScifi] = SFRcontainer.sfrcheckerror(ME, false);
+        if isScifi; throwAsCaller(err); else rethrow(ME); end;
+
       end
     end
     
@@ -424,24 +525,29 @@ classdef SFRcontainer < dynamicprops
           out = rootStruct;
         end
       catch ME
-        if strncmp(ME.identifier, 'SCIFileRepos', 12)
-          if ~strncmp(ME.message,'Problem in =',12)
-            err = MException(ME.identifier,sprintf('Problem in => %s\n%s',...
-              ME.stack(1).name,ME.message));
-          else
-            err = ME;
-          end
-          throwAsCaller(err);
-        else
-          rethrow(ME);
-        end
-
+        [err, isScifi] = SFRcontainer.sfrcheckerror(ME, false);
+        if isScifi; throwAsCaller(err); else rethrow(ME); end;
       end
 
     end
   end
   
   methods (Static, Access=protected)
+    
+    function [ME simpleErr] = sfrcheckerror(ME, isSciFi)
+      simpleErr = false;
+      if strncmp(ME.identifier, 'SCIFileRepos', 12) || isSciFi
+        if ~strncmp(ME.message,'Problem in =',12)
+          problemFunc = regexp(ME.stack(1).name,'\.','split');
+          problemFunc = problemFunc{end};
+          
+          ME = MException(sprintf('SCIFileRepos:%s',problemFunc),...
+            sprintf('Problem in => %s\n%s',problemFunc, ME.message));
+        end
+        simpleErr = true;
+      end
+    end
+    
     function out = loadReposStruct(locId, filename)
       % LOADREPOSSTRUCT  Loads the repos structure from XML
       %   This method is protected and is only accessed by GETREPOS.
@@ -486,17 +592,8 @@ classdef SFRcontainer < dynamicprops
             'Unable to read XML file.'));
         end  
       catch ME
-        if strncmp(ME.identifier, 'SCIFileRepos', 12)
-          if ~strncmp(ME.message,'Problem in =',12)
-            err = MException(ME.identifier,sprintf('Problem in => %s\n%s',...
-              ME.stack(1).name,ME.message));
-          else
-            err = ME;
-          end
-          throwAsCaller(err);
-        else
-          rethrow(ME);
-        end
+        [err, isScifi] = SFRcontainer.sfrcheckerror(ME, false);
+        if isScifi; throwAsCaller(err); else rethrow(ME); end;
       end        
     end
   end
