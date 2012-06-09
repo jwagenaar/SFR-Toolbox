@@ -304,7 +304,12 @@ classdef SFRepos < dynamicprops
         curRoot = curRoot.(obj.rootId);
         filePath = fullfile(curRoot, obj.subPath);
         
-        out = obj.infoFcn(obj, filePath, option);
+        if nargin==1
+          out = obj.infoFcn(obj, filePath,'attributes');
+        elseif nargin ==2
+           out = obj.infoFcn(obj, filePath, option);
+        end
+          
       catch ME
         isSciFi = false;
         if strcmp(ME.identifier, 'MATLAB:UndefinedFunction');

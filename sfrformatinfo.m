@@ -26,10 +26,10 @@ function varargout = sfrformatinfo(formatName)
         formatName,formatName);
 
       
-      reqAttrStr = sprintf('''%s''. ',out.requiredAttr{:});
+      reqAttrStr = sprintf('''%s'', ',out.requiredAttr{:});
       reqAttrStr = reqAttrStr(1:(end-2));
       
-      optAttrStr = sprintf('''%s''. ',out.optionalAttr{:});
+      optAttrStr = sprintf('''%s'', ',out.optionalAttr{:});
       optAttrStr = optAttrStr(1:(end-2));      
       
       display(sprintf('\n  %s Info:\n',Link1))
