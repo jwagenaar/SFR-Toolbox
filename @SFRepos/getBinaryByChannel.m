@@ -1,5 +1,5 @@
-function data = getBinByChannel(obj, channels, indeces, filePath, options)
-
+function data = getBinaryByChannel(obj, channels, indeces, filePath, options)
+  % BINARYBYCHANNEL  See INFOBINARYBYCHANNEL
 
   % Copyright (c) 2012, J.B.Wagenaar
   % This source file is subject to version 3 of the GPL license, 

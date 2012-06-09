@@ -1,4 +1,5 @@
-function attr = attrBinByChannel(obj, attr)
+function attr = attrBinaryByChannel(obj, attr)
+  % BINARYBYCHANNEL  See INFOBINARYBYCHANNEL
 
   % Copyright (c) 2012, J.B.Wagenaar
   % This source file is subject to version 3 of the GPL license, 

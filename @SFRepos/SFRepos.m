@@ -75,8 +75,9 @@ classdef SFRepos < dynamicprops
   end
 
   properties (Transient, Hidden)
-    userData    = {}  % Can be used by getMethod to store stuff in object.
-    fetchCache  = []  % Holds data if the getMethod can utilize this.
+    userData   = {}  % Can be used by getMethod to store stuff in object.
+    fetchCache = []  % Holds data if the getMethod can utilize this.
+    localPath  = ''  % Can be used to temporarily change the path.
   end
 
   properties (Access = private, Hidden)
@@ -89,7 +90,7 @@ classdef SFRepos < dynamicprops
     optAttr       % Cell array with optional Attributes.
   end
   
-  methods
+  methods (Sealed)
     function obj = SFRepos(type, rootID, subPath, files, ...
       typeAttr, dataAttr)
       
@@ -114,10 +115,11 @@ classdef SFRepos < dynamicprops
           'SCIFileRepos:SFRepos',...
           'Each cell in the FILES input should contain a string.')
 
-        obj.typeId  = type;
-        obj.rootId  = rootID;
-        obj.subPath = subPath;
-        obj.files   = files;
+        obj.typeId   = type;
+        obj.rootId   = rootID;
+        obj.subPath  = subPath;
+        obj.files    = files;
+        obj.typeAttr = struct();
 
         % Set functionHandles
         obj.dataFcn = str2func(sprintf('get%s',type));
@@ -125,7 +127,7 @@ classdef SFRepos < dynamicprops
         obj.infoFcn = str2func(sprintf('info%s',type));
 
         % Get File-Format information
-        attributes = formatinfo(obj, 'attributes');
+        attributes = getinfo(obj, 'attributes');
         obj.reqAttr = attributes.requiredAttr;
         obj.optAttr = attributes.optionalAttr;
         
@@ -181,9 +183,7 @@ classdef SFRepos < dynamicprops
         end
         
         % Add size info to data prop.
-        sz = formatinfo(obj, 'size');        
-        sizestr = [num2str(sz.size(1)) sprintf('x%d',sz.size(2:end))];
-        obj.data = sprintf('[%s %s]',sizestr, sz.format);
+        sz = getinfo(obj, 'size');        
         obj.dataInfo = sz;
 
         
@@ -202,16 +202,16 @@ classdef SFRepos < dynamicprops
         if strcmp(s(1).subs,'data')
           switch length(s)
             case 1
-              chIndeces = 1:obj.dataInfo.size(2);
-              valueIndeces = 1:obj.dataInfo.size(1);
+              chIndeces = 1:obj.dataInfo.size(1);
+              valueIndeces = 1:obj.dataInfo.size(2);
               out = getdata(obj, chIndeces, valueIndeces);
             case 2
               assert(strcmp(s(2).type,'()'),'SciFileRepos:subsref', ...
                 ['Cannot use any other indexing than ''()'' in the data '...
                 'property of an SFRepos.']);
 
-              chIndeces = s(2).subs{1};
-              valueIndeces = s(2).subs{2};
+              chIndeces = s(2).subs{2};
+              valueIndeces = s(2).subs{1};
               if ischar(chIndeces)
                 if strcmp(chIndeces,':')
                   chIndeces = 1:obj.dataInfo.size(2);
@@ -229,7 +229,7 @@ classdef SFRepos < dynamicprops
                 end
               end
 
-              out = getdata(obj, chIndeces, valueIndeces);
+              out = getdata(obj, valueIndeces, chIndeces);
             otherwise
               error('SciFileRepos:subsref', ...
                 ['Cannot subindex more than one level in the data property '...
@@ -258,7 +258,7 @@ classdef SFRepos < dynamicprops
     end
     
     function obj = addattr(obj, varargin)
-      %ADDATTR  Adds an attribute to HDSFILEREPOS
+      %ADDATTR  Adds an attribute to the object.
       %   OBJ = ADDATTR(OBJ, 'name', Value, ...) adds one or more attributes to
       %   the object. These attributes should be used for meta-data that is
       %   unavailable in the files but that are required to correctly interpret
@@ -297,7 +297,7 @@ classdef SFRepos < dynamicprops
       end
     end
     
-    function out = formatinfo(obj, option)
+    function out = getinfo(obj, option)
       
       try
         curRoot = obj.getrepos();
@@ -318,7 +318,7 @@ classdef SFRepos < dynamicprops
       
     end
     
-    function data = getdata(obj, channels, indeces, varargin)
+    function data = getdata(obj, indeces, channels, varargin)
       %GETDATA  Returns data from repository.
       %   DATA = GETDATA(OBJ, CHANNELS, INDECES) returns the data for the
       %   current object as a 2D array. CHANNELS is a vector of indeces that
@@ -386,6 +386,12 @@ classdef SFRepos < dynamicprops
           end
         end
                
+        % Check range inputs
+        assert(min(channels) >= 1 && ...
+        max(channels) <= obj.dataInfo.size(2) && ...
+          min(indeces) >= 1 && max(indeces) <= obj.dataInfo.size(1),...
+          'SciFileRepos:getdata','Index out of range.' );
+        
         curRoot = obj.getrepos();
         curRoot = curRoot.(obj.rootId);
         filePath = fullfile(curRoot, obj.subPath);
@@ -422,10 +428,7 @@ classdef SFRepos < dynamicprops
       %   See also: ADDATTR GETDATA
       
       try
-        attr = struct();
-        for iAttr = 1: length(obj.typeAttr)
-          attr.(obj.typeAttr{iAttr}) = obj.(obj.typeAttr{iAttr});
-        end   
+        attr = obj.typeAttr;  
         
         for iAttr = 1: length(obj.attrList)
           attr.(obj.attrList{iAttr}) = obj.(obj.attrList{iAttr});
@@ -433,14 +436,18 @@ classdef SFRepos < dynamicprops
         
         attr = obj.attrFcn(obj, attr);
       catch ME
-        [err, isScifi] = SFRepos.sfrcheckerror(ME, false);
+        isScifi = false;
+        if strcmp(ME.identifier, 'MATLAB:UndefinedFunction');
+          isScifi = true;
+        end
+        [err, isScifi] = SFRepos.sfrcheckerror(ME, isScifi);
         if isScifi; throwAsCaller(err); else rethrow(ME); end;
       end
       
     end
 
     function cleanup(obj)
-      %CLEANUP  removes data from transient properties
+      %CLEANUP  Removes data from transient properties.
       %   CLEANUP(OBJ) removes data from transient properties to allow Matlab to
       %   perform garbage collection and make more memory available.
       %
@@ -487,6 +494,331 @@ classdef SFRepos < dynamicprops
       end
     end
     
+    function curPath = getpath(obj)
+      %GETPATH  Returns the folder where the files are located.
+      %   CURPATH = GETPATH(OBJ) return the folder where the files are located.
+      %   Depending on whether the user has set the 'localSubPath' property, the
+      %   default path or the local path will be returned.
+      %
+      %   Setting this method will bypass the 'rootID' and 'subPath' properties
+      %   when the GETPATH method is used.
+      %
+      %   See also: SFREPOS SETLOCALPATH
+      
+      try
+        if isempty(obj.localPath)
+          curRoot = obj.getrepos();
+          curRoot = curRoot.(obj.rootId);
+          curPath = fullfile(curRoot, obj.subPath);
+        else
+          curPath = obj.localPath;
+        end
+      catch ME
+        [err, isScifi] = SFRepos.sfrcheckerror(ME, false);
+        if isScifi; throwAsCaller(err); else rethrow(ME); end;
+      end
+      
+    end
+    
+    function obj = setlocalpath(obj, localPath)
+      %SETLOCALPATH  Sets a temporary new location for the files.
+      %   OBJ = SETLOCALPATH(OBJ, 'localPath') set a temporary new location for
+      %   the files. The 'localPath' should be a string indicating the folder
+      %   that the files are located.
+      %
+      %   This method can be used to teporarily point the object to a new folder
+      %   in case you copied the objects. This can be useful if you want to make
+      %   a temporary local copy of some data to increase the speed of your
+      %   analysis. You don't have to recreate the SFREPOS object, just use this
+      %   method to point to the new location.
+      %
+      %   This method will bypass the 'rootID' and 'subPath' properties.
+      %
+      %   NOTE: This property will not be saved with the object (is a Transient
+      %   variable). You'll have to set this everytime the object is loaded.
+      %
+      %   See also: GETPATH
+      
+      try
+        assert(nargin==2,'SCIFileRepos:setlocalPpath',...
+          'Incorrect number of input arguments.');
+        
+        assert(ischar(localPath) && isvector(localPath), 'SCIFileRepos:setlocalPpath',...
+          'LocalPath should be a string.');
+        
+        obj.localPath = localPath;
+      catch ME
+        [err, isScifi] = SFRepos.sfrcheckerror(ME, false);
+        if isScifi; throwAsCaller(err); else rethrow(ME); end;
+      end
+      
+    end
+    
+    function m = methods(obj, arg)
+      %METHODS  Shows all methods associated with the object.
+      %   METHODS(OBJ) displays all methods of the object OBJ that
+      %   are defined for the subclass OBJ. Methods belonging to the
+      %   HDS Toolbox are not shown. Clicking on the methods link
+      %   will display the full description on the method.
+      %
+      %   METHOD(OBJ,'-all') includes the HDS Toolbox methods and
+      %   displays them as well as the class specific methods.
+
+      SFRMethods = { 'SFRepos' 'addattr' 'setlocalpath' 'getpath' 'getdata' 'getattr' ...
+        'getinfo' 'cleanup' 'getrepos' 'methods' };
+      SFRMethodStr = {...
+        'Object constructor for the class.'...
+        'Adds an attribute to the object.'...
+        'Sets a temporary new location for the files.' ...
+        'Returns the folder where the files are located.'...
+        'Returns data from repository.'...
+        'Returns attributes associated with data files.'...
+        'Returns information about the fileformat.'...
+        'Removes data from transient properties.'...
+        'Returns structure with repos locations.'...
+        'Returns the methods for objects of class SFRepos.'...
+        };    
+
+      blockmethods = {'addlistener' 'delete' 'disp' 'eq' 'ge' 'ne' 'gt'  ...
+        'le' 'lt' 'notify' 'isvalid' 'findobj' 'findprop' 'copy' ...
+        'addprop' 'subsref' ...
+        };
+
+      if nargin == 2
+        assert(strcmp('-all',arg), 'METHODS: Incorrect input argument.');
+        showALL = true;
+      elseif nargin == 1
+        showALL = false;
+      else
+        error('HDS:methods','METHODS: Incorrect number of input arguments.');
+      end
+
+      if nargout
+        fncs = builtin('methods', obj);
+        if showALL
+          blockIdx = cellfun(@(x) any(strcmp(x, blockmethods)), fncs);
+          fncs(blockIdx) = [];
+        else
+          blockIdx = cellfun(@(x) ~any(strcmp(x, SFRMethods)), fncs);
+          fncs(blockIdx) = [];
+        end
+        m = fncs;
+        return;  
+      end
+
+      Link1 = sprintf('<a href="matlab:help(''%s'')">%s</a>',class(obj),class(obj));
+
+      %Display Methods
+      display([sprintf('\n') Link1 sprintf(' methods:')]);
+
+      %Display methods sorted by the length of the method name and
+      %then alphabetically. 
+
+      fprintf('\nSFR Methods:\n');
+      for i = 1:length(SFRMethods)
+        method = SFRMethods{i};
+        link = sprintf('<a href="matlab:help(''%s>%s'')">%s</a>','SFRepos',method, method);
+        pad = char(32*ones(1,(20-length(method))));
+        disp([ ' ' link pad SFRMethodStr{i}]);
+      end
+      
+      if showALL
+        %Define indenting steps for unusual long method names.
+        STEP_SIZES = [20 23 26 29 32 35 38 41 44 47 50];
+        SAMPLES_TOO_CLOSE = 2;
+      
+        fncs = builtin('methods', obj);
+        blockIdx = cellfun(@(x) any(strcmp(x, [SFRMethods blockmethods])), fncs);
+        fncs(blockIdx) = [];
+        
+        % -- Get H1 lines  
+        txts{1,length(fncs)} = [];
+        for i=1:length(fncs)
+          aux = help(sprintf('%s.%s',class(obj), fncs{i}));
+          tmp = regexp(aux,'\n','split');
+          tmp = regexp(tmp{1},'\s*[\w\d()\[\]\.]+\s+(.+)','tokens','once');
+          if ~isempty(tmp)
+            txts(i) = tmp;
+          end
+        end
+        
+        %The class specific methods
+        [~,I] = sort(lower(fncs));
+        fncs = fncs(I);
+        txts = txts(I);
+        
+        L = cellfun('length', fncs);
+        
+        fprintf('\nOther Methods:\n');
+        for iSize = 1:length(STEP_SIZES)
+          if iSize == length(STEP_SIZES)
+            iUse = 1:length(txts);
+          else
+            iUse = find(L <= STEP_SIZES(iSize) - SAMPLES_TOO_CLOSE);
+          end
+          txtsUse = txts(iUse);
+          fncsUse = fncs(iUse);
+          LUse    = L(iUse);
+          txts(iUse) = [];
+          fncs(iUse) = [];
+          L(iUse)    = [];
+          for i=1:length(txtsUse)
+            link = sprintf('<a href="matlab:help(''%s>%s'')">%s</a>',...
+              class(obj),fncsUse{i},fncsUse{i});
+            pad = char(32*ones(1,(STEP_SIZES(iSize)-LUse(i))));
+            disp([ ' ' link pad txtsUse{i}]);
+          end
+        end
+      else
+        Link2 = sprintf('<a href="matlab:methods(%s,''-all'')">show more.</a>',class(obj));
+        fprintf(['\n + ' Link2 '\n\n']);
+      end
+    end
+
+    function disp(obj) 
+      %DISP  Displays the object in the console.
+      %   DISP(OBJ) displays the object in the console. This method formats the
+      %   data in the object and displays the object including links to
+      %   informative methods.
+
+      % Check if matlab is running in terminal. If so, no links are used.
+      if usejava('desktop')
+        showLinks = true;
+      else
+        showLinks = false;
+      end
+
+      % Create links to methods
+      Link0 = sprintf(': <a href="matlab:help(''info%s'')">%s</a>',...
+        obj.typeId,obj.typeId);
+      Link1 = sprintf('<a href="matlab:help(''%s'')">%s</a>',class(obj),class(obj));
+      Link2 = sprintf('<a href="matlab:methods(%s)">Methods</a>',class(obj));
+      Link3 = sprintf(['<a href="matlab:display(sprintf(''\\n  Full Path: %s\\n''))"'...
+        '>FilePath</a>'],getpath(obj));
+
+      if length(obj) == 1 
+
+        % Check if object is deleted.
+        if isvalid(obj)
+
+          fieldn  = fieldnames(obj);
+
+
+          valTxts{1,length(fieldn)} = [];
+          for i = 1:length(fieldn)
+            curProp = obj.(fieldn{i});
+            
+            if any(strcmp(fieldn{i}, {'typeId' 'data' 'attr'}))
+              % Do special stuff
+              switch fieldn{i}
+                case 'typeId'
+                  valTxts{i} = Link0;
+                case 'data'
+                  info = obj.dataInfo;
+                  valTxts{i} = sprintf(': [%ix%i %s]',info.size(1), ...
+                    info.size(2),info.format);
+                  
+                case 'attr'
+                  valTxts{i} = ': [1x1 struct]';
+              end
+              
+              
+            else
+              if ischar(curProp)
+                if length(curProp) < 50 && size(curProp,1)<=1
+                  valTxts{i} = [': ''' curProp ''''];
+                else
+                  s = size(curProp);
+                  valTxts{i} = sprintf(': [%ix%i char]',s(1), s(2));
+                end
+              elseif iscellstr(curProp)
+                aux = cellfun(@(x) ['''' x '''  '], curProp, 'UniformOutput', false);
+                if ~isempty(aux);aux(end) = strtrim(aux(end));end
+                  valTxts{i} = [': {' [aux{:}] '}'];
+                  if length(valTxts{i})>50
+                    s = size(curProp);
+                    sizestr = [num2str(s(1)) sprintf('x%d',s(2:end))];
+                    valTxts{i} = sprintf(': {%s cell}',sizestr);
+                  end
+              elseif isnumeric(curProp)
+                if length(curProp)==1
+                  valTxts{i} = num2str(curProp,': %g');
+                elseif length(curProp)<10 && ndims(curProp) == 2 && any(size(curProp) <= 1)
+                  %Needs to be a row vector
+                  if size(curProp,1) > 1
+                    s = size(curProp);
+                    sizestr = [num2str(s(1)) sprintf('x%d',s(2:end))];
+                    valTxts{i} = sprintf(': [%s %s]',sizestr, class(curProp));
+                  else
+                    valTxts{i} = [': [' regexprep(num2str(curProp,'% g'),' +',' ') ']'];
+                  end
+                  if length(valTxts{i}) > 50
+                    s = size(curProp);
+                    sizestr = [num2str(s(1)) sprintf('x%d',s(2:end))];
+                    valTxts{i} = sprintf(': [%s %s]',sizestr, class(curProp));
+                  end
+                else
+                  s = size(curProp);
+                  sizestr = [num2str(s(1)) sprintf('x%d',s(2:end))];
+                  valTxts{i} = sprintf(': [%s %s]',sizestr,class(curProp));
+                end
+              elseif islogical(curProp)
+                if curProp; valTxts{i} = ': True';else valTxts{i} = ': False';end
+              else 
+                s = size(curProp);
+                sizestr = [num2str(s(1)) sprintf('x%d',s(2:end))];
+                valTxts{i} = sprintf(': [%s %s]',sizestr, class(curProp));
+              end
+            end
+           
+          end
+
+          sizeStr = [];
+        else
+          % Object is deleted, show deleted info and return from method.
+          if showLinks
+              display([ '  deleted '  Link1]);
+              display([sprintf('\n  ') Link2 ', ' Link3 sprintf('\n')]);
+          else
+              display([ '  deleted '  class(obj)]);
+          end
+          return
+        end
+
+      else
+        % Display array of objects.
+        sizeStr = sprintf('%ix%i ',size(obj,1), size(obj,2));
+        fieldn   = fieldnames(obj);
+        valTxts{1,length(fieldn)} = [];
+      end
+
+
+      % --- Actual printing to display ---
+      
+      % Display top links
+      maxPropNameLength = max(cellfun(@length, fieldn));
+      if showLinks
+        display([ '  ' sizeStr  Link1 ':'  sprintf('\n')]);
+      else
+        display([ '  ' sizeStr  class(obj) ':'  sprintf('\n')]);
+      end
+
+      % Display Properties
+      for i=1:length(valTxts)
+        pad = char(32*ones(1,(maxPropNameLength - length(fieldn{i})  +2)));
+        disp([ ' ' pad ' '  fieldn{i} valTxts{i} ]);
+      end
+
+      % Display methods
+      if showLinks
+        display([sprintf('\n  ') Link2 ', ' Link3  sprintf('\n')]);
+      end
+      
+      % --- ---
+
+
+    end
+
   end
     
   methods (Static)
@@ -550,19 +882,39 @@ classdef SFRepos < dynamicprops
       end
 
     end
+    
+    function out = getattrinfo(formatName)
+      %GETATTRINFO  Returns required and optional attributes.
+      %   OUT = GETATTRINFO('formatName') returns the required and optional
+      %   attributes for the specified 'formatName'.
+      
+      try
+        infoFnc = str2func(sprintf('info%s',formatName));
+        out = infoFnc(SFRepos, '', 'attributes');
+      catch ME
+        isScifi = false;
+        if strcmp(ME.identifier, 'MATLAB:UndefinedFunction');
+          isScifi = true;
+        end
+        
+        [err, isScifi] = SFRepos.sfrcheckerror(ME, isScifi);
+        if isScifi; throwAsCaller(err); else rethrow(ME); end;
+      end
+      
+    end
   end
   
   methods (Static, Access=protected)
     
     function [ME simpleErr] = sfrcheckerror(ME, isSciFi)
       simpleErr = false;
-      if strncmp(ME.identifier, 'SCIFileRepos', 12) || isSciFi
+      if strncmpi(ME.identifier, 'scifilerepos', 12) || isSciFi
         if ~strncmp(ME.message,'Problem in =',12)
           problemFunc = regexp(ME.stack(1).name,'\.','split');
           problemFunc = problemFunc{end};
           
           ME = MException(sprintf('SCIFileRepos:%s',problemFunc),...
-            sprintf('Problem in => %s\n%s',problemFunc, ME.message));
+            sprintf('Problem in ==> %s\n%s',problemFunc, ME.message));
         end
         simpleErr = true;
       end
