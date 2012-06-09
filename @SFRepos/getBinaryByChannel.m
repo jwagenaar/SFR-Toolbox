@@ -36,7 +36,11 @@ function data = getBinaryByChannel(obj, channels, indeces, filePath, options)
     end
         
     % Get the data.
-    data(:,iChan) = swapbytes(mmm.data(indeces));
+    if options.SwapBytes
+      data(:,iChan) = swapbytes(mmm.data(indeces));
+    else
+      data(:,iChan) = mmm.data(indeces);
+    end
   end
 
 end

@@ -8,6 +8,9 @@ function out = infoBinaryByChannel(obj, filePath, option)
   %     'Format':   This string indicates the class of the values in the file.
   %                 Set this to 'double', 'single', 'uint16' or any other
   %                 default type of data.
+  %     'SwapBytes':This Boolean determines whether the bytes in the file should
+  %                 be swapped. This is sometimes necessary depending on the
+  %                 platform that was used to save the data.
   %   Optional attributes:
   %     none
   
@@ -18,7 +21,7 @@ function out = infoBinaryByChannel(obj, filePath, option)
       % Required output structure for case 'attributes'.
       out = struct('requiredAttr',[],'optionalAttr',[]);
       
-      out.requiredAttr = {'Format'};
+      out.requiredAttr = {'Format' 'SwapBytes'};
       out.optionalAttr = {}; % No optional attributes.
       
     case 'size'
