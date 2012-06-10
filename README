@@ -14,5 +14,8 @@ fileformats using a standardized syntax.
 
 # Viewing the example data.    
 1.  Start Matlab and browse to the \SFRExample folder.
-2.  Load the 'repos.mat' file in matlab.
-3.  View the data using: repos.data(1:1000, 1:4)
+2.  Set your SFR-location using: 
+      > sfrsetlocation()
+3.  Load the 'repos.mat' file in matlab.
+4.  View the data using: 
+      > repos.data(1:1000, 1:4)
