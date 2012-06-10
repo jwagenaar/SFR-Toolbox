@@ -563,10 +563,10 @@ classdef SFRepos < dynamicprops
       %METHODS  Shows all methods associated with the object.
       %   METHODS(OBJ) displays all methods of the object OBJ that
       %   are defined for the subclass OBJ. Methods belonging to the
-      %   HDS Toolbox are not shown. Clicking on the methods link
+      %   SFR Toolbox are not shown. Clicking on the methods link
       %   will display the full description on the method.
       %
-      %   METHOD(OBJ,'-all') includes the HDS Toolbox methods and
+      %   METHOD(OBJ,'-all') includes the SFR Toolbox methods and
       %   displays them as well as the class specific methods.
 
       SFRMethods = { 'SFRepos' 'addattr' 'setlocalpath' 'getpath' 'getdata' 'getattr' ...
@@ -595,7 +595,7 @@ classdef SFRepos < dynamicprops
       elseif nargin == 1
         showALL = false;
       else
-        error('HDS:methods','METHODS: Incorrect number of input arguments.');
+        error('SFR:methods','METHODS: Incorrect number of input arguments.');
       end
 
       if nargout
@@ -857,7 +857,7 @@ classdef SFRepos < dynamicprops
 
             if isempty(curLocId)
               fprintf(2,' -- -- Input Required -- --\n');
-              locId = input('Specify the Location ID for the HDS Repos  : ','s');
+              locId = input('Specify the location for the SFR toolbox  : ','s');
             else
               locId = curLocId;
             end
