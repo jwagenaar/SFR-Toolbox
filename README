@@ -1,14 +1,18 @@
-#-- -- -- - SCIFILEREPOS -- -- -- --
+# -- -- -- - SCIFILEREPOS -- -- -- --
 Version: 1.0.0
 
 This tool can be used to create objects that access a wide variety of 
 fileformats using a standardized syntax. 
 
-# Using the SCIFILEREPOS repository class
+# Using the SCIFILEREPOS repository class.
 1.  Download the SCIFILEREPOS - Project and place the downloaded folder on the 
     Matlab path.
 2.  Copy the 'sample_ReposFile.xml' and open the file using a text-editor.
 3.  Change the path attribute of the line that starts with 
     <REPOS id="SFRroot"...> to the location where you saved the SCIFILEREPOS
     project.
-4.  Start Matlab 
+
+# Viewing the example data.    
+1.  Start Matlab and browse to the \SFRExample folder.
+2.  Load the 'repos.mat' file in matlab.
+3.  View the data using: repos.data(1:1000, 1:4)
