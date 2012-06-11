@@ -300,7 +300,7 @@ classdef SFRepos < dynamicprops
     function out = getinfo(obj, option)
       
       try
-        curRoot = obj.getrepos();
+        curRoot = obj.reposlocation();
         curRoot = curRoot.(obj.rootId);
         filePath = fullfile(curRoot, obj.subPath);
         
@@ -397,7 +397,7 @@ classdef SFRepos < dynamicprops
           min(indeces) >= 1 && max(indeces) <= obj.dataInfo.size(1),...
           'SciFileRepos:getdata','Index out of range.' );
         
-        curRoot = obj.getrepos();
+        curRoot = obj.reposlocation();
         curRoot = curRoot.(obj.rootId);
         filePath = fullfile(curRoot, obj.subPath);
         
@@ -512,7 +512,7 @@ classdef SFRepos < dynamicprops
       
       try
         if isempty(obj.localPath)
-          curRoot = obj.getrepos();
+          curRoot = obj.reposlocation();
           curRoot = curRoot.(obj.rootId);
           curPath = fullfile(curRoot, obj.subPath);
         else
@@ -570,7 +570,7 @@ classdef SFRepos < dynamicprops
       %   displays them as well as the class specific methods.
 
       SFRMethods = { 'SFRepos' 'addattr' 'setlocalpath' 'getpath' 'getdata' 'getattr' ...
-        'getinfo' 'cleanup' 'getrepos' 'methods' };
+        'getinfo' 'cleanup' 'reposlocation' 'methods' };
       SFRMethodStr = {...
         'Object constructor for the class.'...
         'Adds an attribute to the object.'...
@@ -694,12 +694,13 @@ classdef SFRepos < dynamicprops
       end
 
       % Create links to methods
+      reposloc = SFRepos.reposlocation();
       Link0 = sprintf(': <a href="matlab:help(''info%s'')">%s</a>',...
         obj.typeId,obj.typeId);
       Link1 = sprintf('<a href="matlab:help(''%s'')">%s</a>',class(obj),class(obj));
       Link2 = sprintf('<a href="matlab:methods(%s)">Methods</a>',class(obj));
-      Link3 = sprintf(['<a href="matlab:display(sprintf(''\\n  Full Path: %s\\n''))"'...
-        '>FilePath</a>'],getpath(obj));
+      Link3 = sprintf(['<a href="matlab:display(sprintf(''\\n  Location: %s\\n  Full Path: %s\\n''))"'...
+        '>Location</a>'],reposloc.locID,getpath(obj));
 
       if length(obj) == 1 
 
@@ -827,13 +828,28 @@ classdef SFRepos < dynamicprops
   end
     
   methods (Static)
-    function out = getrepos(locId,  fileName)
-      %GETREPOS  Returns structure with repos locations.
-      %   OUT = GETREPOS() 
+    function out = reposlocation(option, locId,  fileName)
+      %REPOSLOCATION  Sets/gets the location structure for the file-repositories.
+      %   OUT = REPOSLOCATION() Gets the repository locations for the current
+      %   session. If the locations have not been loaded into memory yet, the
+      %   method returns an error indicating to use the SFRSETLOCATION.
+      %   
+      %   OUT = REPOSLOCATION('get') Returns the same information as above.
       %
-      %   OUT = GETREPOS(LOCID)
+      %   OUT = REPOSLOCATION('set') Asks the user to provide the location of
+      %   the user specific 'location.xml' file and the environment that the
+      %   user is currently using. 
       %
-      %   OUT = GETREPOS(LOCID, FILENAME)
+      %   OUT = REPOSLOCATION('set', LOCID) Depending on whether the user has
+      %   previously used this method to locate the XML file the user will or
+      %   will not be prompted to locate the XML file. The environment for the
+      %   current session will be set to LOCID.
+      %
+      %   OUT = REPOSLOCATION('set', LOCID, FILENAME) Loads the user-specific
+      %   location XML file from FILENAME and sets the environment of the
+      %   current session to LOCID.
+      %
+      %   See also: SFRSETLOCATION 
       
       persistent curLocId rootStruct curPath
       
@@ -847,28 +863,52 @@ classdef SFRepos < dynamicprops
       try
         switch nargin
           case 0
-            if isempty(curPath)
-              title = 'Select your HDSRepos XML Specification';
-              [FileName, PathName] = uigetfile('*.xml', title, 'HDSRepos.xml');
-              fileName = fullfile(PathName,FileName);
-            else
-              fileName = curPath;
-            end
-
-            if isempty(curLocId)
-              fprintf(2,' -- -- Input Required -- --\n');
-              locId = input('Specify the location for the SFR toolbox  : ','s');
-            else
-              locId = curLocId;
-            end
-
+            assert(~isempty(curPath), 'SciFileRepos:setlocation',...
+              ['Cannot get the location structure without first setting '...
+              'the location using SFRSETLOCATION.']);
+            
+            fileName = curPath;
+            locId    = curLocId;
+            
           case 1
+            switch option
+              case 'get'
+                assert(~isempty(curPath), 'SciFileRepos:setlocation',...
+                  ['Cannot get the location structure without first setting '...
+                  'the location using SFRSETLOCATION.']);
+            
+                fileName = curPath;
+                locId    = curLocId;
+              case 'set'
+                title = 'Select your HDSRepos XML Specification';
+                [FileName, PathName] = uigetfile('*.xml', title, 'HDSRepos.xml');
+                assert(ischar(FileName),'SciFileRepos:reposlocation',...
+                  'User cancelled loading the XML file.')
+                fileName = fullfile(PathName,FileName);
+                
+                fprintf(2,' -- -- Input Required -- --\n');
+                locId = input('Specify the location for the SFR toolbox  : ','s');
+            end 
+
+          case 2
+            assert(strcmp(option,'set'), 'SciFileRepos:setlocation',...
+              ['Multiple input arguments are only valid for ''setting'' the '...
+              'location.']);
+            
             if isempty(curPath)
               [FileName, PathName]    = uigetfile();
+              assert(ischar(FileName),'SciFileRepos:reposlocation',...
+                'User cancelled loading the XML file.')
               fileName = fullfile(PathName,FileName);
             else
               fileName = curPath;
             end
+            
+          case 3
+            assert(strcmp(option,'set'), 'SciFileRepos:setlocation',...
+              ['Multiple input arguments are only valid for ''setting'' the '...
+              'location.']);
+            
           otherwise
         end
 
@@ -878,6 +918,7 @@ classdef SFRepos < dynamicprops
         else
           rootStruct = SFRepos.loadReposStruct(locId, fileName);
           curPath = fileName;
+          
           curLocId = locId;
           out = rootStruct;
         end
@@ -927,7 +968,7 @@ classdef SFRepos < dynamicprops
     
     function out = loadReposStruct(locId, filename)
       % LOADREPOSSTRUCT  Loads the repos structure from XML
-      %   This method is protected and is only accessed by GETREPOS.
+      %   This method is protected and is only accessed by reposlocation.
       
       try
         assert(exist(filename,'file')==2, 'SCIFileRepos:LoadRepos_File',...
@@ -963,6 +1004,7 @@ classdef SFRepos < dynamicprops
             n = strtrim(char(allReposObjs.item(i-1).getAttribute('id')));
             t = strtrim(char(allReposObjs.item(i-1).getAttribute('path')));
             out.(n) = t;
+            out.locID = locId;
           end
         catch ME
           throw(MException('SCIFileRepos:LoadRepos_fileError',...
@@ -974,5 +1016,4 @@ classdef SFRepos < dynamicprops
       end        
     end
   end
-  
 end
