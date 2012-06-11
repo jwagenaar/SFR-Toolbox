@@ -1,10 +1,23 @@
-# -- -- -- - SCIFILEREPOS -- -- -- --
+# -- -- -- - SFRepos -- -- -- --
 Version: 1.0.0
 
-This tool can be used to create objects that access a wide variety of 
-fileformats using a standardized syntax. 
+This toolbox can be used to access scientific data from a variety of different file-formats using standardized syntax. The toolbox assumes that your scientific data consists of continuous data on multiple channels which can be represented by a large 2D array of numerics. In addition, the files may contain some attributes describing the data, which could be loaded into a Matlab structure.
 
-# Using the SCIFILEREPOS repository class.
+Each data set, which could consist of 1 or more files on disk, is represented by a single object. The file-type and location of the files is stored in a flexible way in the object which allows the user to work from different locations.
+
+The GETDATA method determines which method should be used to load the data based on the fileType. The GETATTR method does the same for the attributes. A third method allows the user to specify, per filetype, which additional attributes the user has to supply to the GETDATA method in order to correctly return the data (i.e. The precision of the data).
+
+The toolbox allows the user to temporarily store variables in the object in order to maximize the efficiency of the getData method. For example, the user can decide to store memmapfiles in the object during the first call of the 'data' property. In subsequent calls, the memmapfile can be retrieved from the object, significantly increasing the speed. Furthermore, the user could decide to use the object to cache some of the returned data in the object for quick retrieval during a subsequent call.
+
+The toolbox currently provides a way to load data from binary data sets where each channel is stored in a separate file. To get the first 100 values on all channels, the user can simply call:
+
+>> repos.data(1:1000,:);
+
+The getMethod for the filetype: BinaryByChannel, automatically loads the correct data form the various files and returns this as a single 2D array of numerics.
+
+
+
+# Installation
 1.  Download the SCIFILEREPOS - Project and place the downloaded folder on the 
     Matlab path.
 2.  Copy the 'sample_ReposFile.xml' and open the file using a text-editor.
