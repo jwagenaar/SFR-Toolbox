@@ -1,4 +1,4 @@
-function out = infoBinaryByChannel(obj, filePath, option)
+function out = infoBinaryByChannel(obj, locPath, option)
   %BINARYBYCHANNEL  Flat Binary file format with single file per channel.
   %
   %   The BINARYBYCHANNEL format handles flat binary files with no header that
@@ -13,38 +13,57 @@ function out = infoBinaryByChannel(obj, filePath, option)
   %                 platform that was used to save the data.
   %   Optional attributes:
   %     none
-  
+  %
+  %   The 'init' option is called by the constructor method of the SFREPOS
+  %   class and should return a structure with the properties: 'requiredAttr',
+  %   'optionalAttr', 'size' and 'format'.
+  %
+  %   The 'info' option is called when the user accesses the 'attr' property of
+  %   the object and should return any other information that is available in
+  %   the files associated with this object.
+  %
+  %   NOTE: You do not have to include the 'size' and 'format' attributes in the
+  %   structure that is returned by the 'info' option. These attributes are
+  %   automatically added by the toolbox.
   
   % Required switch statement with required cases: 'attributes' and 'size'
+  
+  assert(nargin == 3, 'SciFileRepos:infoMethod', ...
+    'Incorrect number of input arguments for infoMethod.');
+  
   switch option
-    case 'attributes'
-      % Required output structure for case 'attributes'.
-      out = struct('requiredAttr',[],'optionalAttr',[]);
-      
+    case 'init'
+
+      % Required output structure for case 'init'.
+      out = struct(...
+        'requiredAttr', [], ...
+        'optionalAttr', [], ...
+        'size', [], ...
+        'format', [] ...
+        );
+
+      % Set required and optional attributes.
       out.requiredAttr = {'Format' 'SwapBytes'};
       out.optionalAttr = {}; % No optional attributes.
-      
-    case 'size'
-      % Required output structure for case 'size'.
-      out = struct('size',[],'format',[]);
-      
+
       % Find number of channels.
       nrChannels = length(obj.files);
 
       % Find number of samples.
       format = obj.typeAttr.Format;
-      fileName = fullfile(filePath, obj.files{1});
-      
-      assert(exist(fileName,'file')==2, 'SciFileRepos:sizeBinByChannel',...
+      filePath = fullfile(locPath, obj.files{1});
+
+      assert(exist(filePath,'file')==2, 'SciFileRepos:sizeBinByChannel',...
         'File does not exist.');
 
-      mmm = memmapfile(fileName,'Format',format,'Writable',false); 
+      mmm = memmapfile(filePath,'Format',format,'Writable',false); 
       nrValues = size(mmm.Data,1);
 
       out.size = [nrValues nrChannels];  
-      out.format = obj.typeAttr.Format;
+      out.format = obj.typeAttr.Format;      
+    case 'info'
     otherwise
-      out = [];
+      error('SciFileRepos:getattr','Incorrect option: %s',option);
   end
   
 end
