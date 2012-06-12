@@ -684,7 +684,7 @@ classdef SFRepos < dynamicprops
       end
     end
 
-    function disp(obj) 
+    function disp(obj)
       %DISP  Displays the object in the console.
       %   DISP(OBJ) displays the object in the console. This method formats the
       %   data in the object and displays the object including links to
