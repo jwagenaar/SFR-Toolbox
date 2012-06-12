@@ -62,7 +62,11 @@ function out = infoBinaryByChannel(obj, locPath, option)
       out.size = [nrValues nrChannels];  
       out.format = obj.typeAttr.Format;      
     case 'info'
+<<<<<<< HEAD
       out = []; %no additional attributes for this file type.
+=======
+      out = []; %No additional info
+>>>>>>> master
     otherwise
       error('SciFileRepos:getattr','Incorrect option: %s',option);
   end
