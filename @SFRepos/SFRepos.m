@@ -53,7 +53,7 @@ classdef SFRepos < dynamicprops
   %     For example: DATAATTR = {'chNames' {'Ch1' 'Ch2' 'Ch3' 'Ch4'}}
   %
   %
-  %   See also: ADDATTR GETDATA GETATTR CLEANUP
+  %   See also: ADDATTR GETDATA CLEANUP
 
   
   % Copyright (c) 2012, J.B.Wagenaar
@@ -83,8 +83,7 @@ classdef SFRepos < dynamicprops
   properties (Access = private, Hidden)
     attrList      % Pointers to the dynamic attribute list.
     dataFcn       % Function handle for getting data.
-    attrFcn       % Function handle for getting attributes.
-    infoFcn       % Function handle for getting size of data.
+    infoFcn       % Function handle for getting meta-info from data.
     dataInfo      % 1x2 vector of data size [nrValues nrChannels]
     reqAttr       % Cell array with required Attributes 
     optAttr       % Cell array with optional Attributes.
@@ -123,15 +122,8 @@ classdef SFRepos < dynamicprops
 
         % Set functionHandles
         obj.dataFcn = str2func(sprintf('get%s',type));
-        obj.attrFcn = str2func(sprintf('attr%s',type));
         obj.infoFcn = str2func(sprintf('info%s',type));
 
-        % Get File-Format information
-        attributes = getinfo(obj, 'attributes');
-        obj.reqAttr = attributes.requiredAttr;
-        obj.optAttr = attributes.optionalAttr;
-        
-        checkReqAttr = false(length(obj.reqAttr),1);
         if nargin > 4
           assert(iscell(typeAttr) && isvector(typeAttr), ...
             'SCIFileRepos:SFRepos',...
@@ -145,26 +137,35 @@ classdef SFRepos < dynamicprops
             'SCIFileRepos:SFRepos',...
             'TYPEATTR names should be strings.')
           
-          for i = 1:length(names)
-            chIndex = find(strcmp(names{i},obj.reqAttr),1);
-            if ~isempty(chIndex)
-              checkReqAttr(chIndex) = true;
-            else
-              assert(any(strcmp(names{i}, obj.optAttr)),...'
-                'SCIFileRepos:SFRepos',...
-                ['Provided TYPE-Attributes are not optional or required for '...
-                'this file-format.']);
-            end
-          end
-          
           values = typeAttr(2:2:end);
           for i = 1: length(names)
             obj.typeAttr.(names{i}) = values{i};
           end
         end
         
+        % Get File-Format information
+        aux = getinfo(obj, 'init');
+        obj.reqAttr  = aux.requiredAttr;
+        obj.optAttr  = aux.optionalAttr;
+        obj.dataInfo = struct('format',aux.format, 'size',aux.size);
+        
+        % Check if loaded typeAttr are required or optional.
+        checkReqAttr = false(length(obj.reqAttr),1);
+        typeAttrNames = fieldnames(obj.typeAttr);
+        for i = 1: length(typeAttrNames)
+          chIndex = find(strcmp(typeAttrNames{i},obj.reqAttr),1);
+          if ~isempty(chIndex)
+            checkReqAttr(chIndex) = true;
+          else
+            assert(any(strcmp(typeAttrNames{i}, obj.optAttr)),...'
+              'SCIFileRepos:SFRepos',...
+              ['Provided TYPE-Attributes are not optional or required for '...
+              'this file-format.']);
+          end
+        end
+        
         assert(all(checkReqAttr),'SCIFileRepos:SFRepos', ...
-          'Not all required attributes are set for this file-format');
+          'Not all required attributes are set for this file-format.');
         
         if nargin == 6
           assert(iscell(dataAttr) && isvector(dataAttr), ...
@@ -181,11 +182,6 @@ classdef SFRepos < dynamicprops
 
           obj = addattr(obj, dataAttr{:});
         end
-        
-        % Add size info to data prop.
-        sz = getinfo(obj, 'size');        
-        obj.dataInfo = sz;
-
         
       catch ME
         [err, isScifi] = SFRepos.sfrcheckerror(ME, false);
@@ -237,7 +233,7 @@ classdef SFRepos < dynamicprops
           end
 
         elseif strcmp(s(1).subs, 'attr')
-          out = getattr(obj);
+          out = getinfo(obj, 'info');
         else
           out = builtin('subsref', obj, s);
         end
@@ -268,7 +264,7 @@ classdef SFRepos < dynamicprops
       %     OBJ = ADDATTR(OBJ, 'SampleFreq', 2713)
       %     OBJ = ADDATTR(OBJ, 'SampleFreq', 2713, 'chNames', {'ch1' 'ch2'})
       %
-      %   See also: GETATTR
+      %   See also: GETINFO
       
       try
         assert(mod(length(varargin),2)==0, 'SCIFileRepos:addattr',...
@@ -297,17 +293,60 @@ classdef SFRepos < dynamicprops
       end
     end
     
-    function out = getinfo(obj, option)
+    function info = getinfo(obj, option)
+      %GETINFO  Returns meta-information about the data.
+      %   INFO = GETINFO(OBJ, 'init') is called by the constructor of the SFRepos
+      %   class. 
+      %
+      %   INFO = GETINFO(OBJ, 'info') is called when the user accesses the 'attr'
+      %   property of the object.
+      %   
+      %   The 'init' option is called by the constructor method of the SFREPOS
+      %   class and should return a structure with the properties: 'requiredAttr',
+      %   'optionalAttr', 'size' and 'format'.
+      %
+      %   The 'info' option is called when the user accesses the 'attr' property of
+      %   the object and should return any other information that is available in
+      %   the files associated with this object.
+      %
+      %   NOTE: You do not have to include the 'size' and 'format' attributes in the
+      %   structure that is returned by the 'info' option. These attributes are
+      %   automatically added by the toolbox.
       
       try
-        curRoot = obj.getrepos();
+        curRoot = obj.reposlocation();
         curRoot = curRoot.(obj.rootId);
         filePath = fullfile(curRoot, obj.subPath);
         
-        if nargin==1
-          out = obj.infoFcn(obj, filePath,'attributes');
-        elseif nargin ==2
-           out = obj.infoFcn(obj, filePath, option);
+        switch option
+          case 'info'
+
+            % Get attributes from files
+            info = obj.infoFcn(obj, filePath, 'info');
+            
+            % Append size and format
+            info.size = obj.dataInfo.size;
+            info.format = obj.dataInfo.format;
+            
+            % Append attributes in object.
+            attrNms = fieldnames(info);
+            for iAttr = 1: length(obj.attrList)
+              if ~any(strcmpi(obj.attrList{iAttr}, attrNms))
+                info.(obj.attrList{iAttr}) = obj.(obj.attrList{iAttr});
+              end
+            end 
+            
+            % Append type attributes.
+            attrNms = fieldnames(info);
+            typeNms = fieldnames(obj.typeAttr);
+            for iAttr = 1: length(typeNms)
+              if ~any(strcmpi(typeNms{iAttr}, attrNms))
+                info.(typeNms{iAttr}) = obj.typeAttr.(typeNms{iAttr});
+              end
+            end 
+            
+          case 'init'
+            info = obj.infoFcn(obj, filePath,'init');
         end
           
       catch ME
@@ -338,7 +377,7 @@ classdef SFRepos < dynamicprops
       %   For Example:
       %     DATA = GETDATA(OBJ, [1 3 5], 1:1000)
       %
-      %   See also: GETATTR
+      %   See also: GETINFO
       
       try
         
@@ -397,14 +436,15 @@ classdef SFRepos < dynamicprops
           min(indeces) >= 1 && max(indeces) <= obj.dataInfo.size(1),...
           'SciFileRepos:getdata','Index out of range.' );
         
-        curRoot = obj.getrepos();
+        curRoot = obj.reposlocation();
         curRoot = curRoot.(obj.rootId);
         filePath = fullfile(curRoot, obj.subPath);
         
         data = obj.dataFcn(obj, channels, indeces, filePath, getAttr);
       catch ME
         isScifi = false;
-        if strcmp(ME.identifier, 'MATLAB:UndefinedFunction');
+        if any(strcmp(ME.identifier, {'MATLAB:UndefinedFunction' ...
+            'MATLAB:memmapfile:inaccessibleFile'}));
           isScifi = true;
         end
         
@@ -413,42 +453,6 @@ classdef SFRepos < dynamicprops
 
 
       end
-    end
-    
-    function attr = getattr(obj)
-      %GETATTR  Returns attributes associated with data files
-      %   ATTR = GETATTR(OBJ) returns a structure with attributes associated
-      %   with OBJ. These attributes can either be added to OBJ using the
-      %   ADDATTR method, or are returned by the ATTR method that is associated
-      %   with the type of data stored in this object.
-      %
-      %   The method consolidates the TYPEATTR property attributes and the
-      %   object attributes and the attributes returned by the specific
-      %   attribute method for the fileformat.
-      %
-      %   In case an attribute is defined in multiple places, the hierarchy of
-      %   attributes equals: 1) Specific format function, 2) Added object
-      %   attributes, and 3) Type Attributes.
-      %
-      %   See also: ADDATTR GETDATA
-      
-      try
-        attr = obj.typeAttr;  
-        
-        for iAttr = 1: length(obj.attrList)
-          attr.(obj.attrList{iAttr}) = obj.(obj.attrList{iAttr});
-        end    
-        
-        attr = obj.attrFcn(obj, attr);
-      catch ME
-        isScifi = false;
-        if strcmp(ME.identifier, 'MATLAB:UndefinedFunction');
-          isScifi = true;
-        end
-        [err, isScifi] = SFRepos.sfrcheckerror(ME, isScifi);
-        if isScifi; throwAsCaller(err); else rethrow(ME); end;
-      end
-      
     end
 
     function cleanup(obj)
@@ -512,7 +516,7 @@ classdef SFRepos < dynamicprops
       
       try
         if isempty(obj.localPath)
-          curRoot = obj.getrepos();
+          curRoot = obj.reposlocation();
           curRoot = curRoot.(obj.rootId);
           curPath = fullfile(curRoot, obj.subPath);
         else
@@ -569,8 +573,8 @@ classdef SFRepos < dynamicprops
       %   METHOD(OBJ,'-all') includes the SFR Toolbox methods and
       %   displays them as well as the class specific methods.
 
-      SFRMethods = { 'SFRepos' 'addattr' 'setlocalpath' 'getpath' 'getdata' 'getattr' ...
-        'getinfo' 'cleanup' 'getrepos' 'methods' };
+      SFRMethods = { 'SFRepos' 'addattr' 'setlocalpath' 'getpath' 'getdata' ...
+        'getinfo' 'cleanup' 'reposlocation' 'methods' };
       SFRMethodStr = {...
         'Object constructor for the class.'...
         'Adds an attribute to the object.'...
@@ -694,12 +698,13 @@ classdef SFRepos < dynamicprops
       end
 
       % Create links to methods
+      reposloc = SFRepos.reposlocation();
       Link0 = sprintf(': <a href="matlab:help(''info%s'')">%s</a>',...
         obj.typeId,obj.typeId);
       Link1 = sprintf('<a href="matlab:help(''%s'')">%s</a>',class(obj),class(obj));
       Link2 = sprintf('<a href="matlab:methods(%s)">Methods</a>',class(obj));
-      Link3 = sprintf(['<a href="matlab:display(sprintf(''\\n  Full Path: %s\\n''))"'...
-        '>FilePath</a>'],getpath(obj));
+      Link3 = sprintf(['<a href="matlab:display(sprintf(''\\n  Location: %s\\n  Full Path: %s\\n''))"'...
+        '>Location</a>'],reposloc.locID,getpath(obj));
 
       if length(obj) == 1 
 
@@ -827,13 +832,28 @@ classdef SFRepos < dynamicprops
   end
     
   methods (Static)
-    function out = getrepos(locId,  fileName)
-      %GETREPOS  Returns structure with repos locations.
-      %   OUT = GETREPOS() 
+    function out = reposlocation(option, locId,  fileName)
+      %REPOSLOCATION  Sets/gets the location structure for the file-repositories.
+      %   OUT = REPOSLOCATION() Gets the repository locations for the current
+      %   session. If the locations have not been loaded into memory yet, the
+      %   method returns an error indicating to use the SFRSETLOCATION.
+      %   
+      %   OUT = REPOSLOCATION('get') Returns the same information as above.
       %
-      %   OUT = GETREPOS(LOCID)
+      %   OUT = REPOSLOCATION('set') Asks the user to provide the location of
+      %   the user specific 'location.xml' file and the environment that the
+      %   user is currently using. 
       %
-      %   OUT = GETREPOS(LOCID, FILENAME)
+      %   OUT = REPOSLOCATION('set', LOCID) Depending on whether the user has
+      %   previously used this method to locate the XML file the user will or
+      %   will not be prompted to locate the XML file. The environment for the
+      %   current session will be set to LOCID.
+      %
+      %   OUT = REPOSLOCATION('set', LOCID, FILENAME) Loads the user-specific
+      %   location XML file from FILENAME and sets the environment of the
+      %   current session to LOCID.
+      %
+      %   See also: SFRSETLOCATION 
       
       persistent curLocId rootStruct curPath
       
@@ -847,28 +867,52 @@ classdef SFRepos < dynamicprops
       try
         switch nargin
           case 0
-            if isempty(curPath)
-              title = 'Select your HDSRepos XML Specification';
-              [FileName, PathName] = uigetfile('*.xml', title, 'HDSRepos.xml');
-              fileName = fullfile(PathName,FileName);
-            else
-              fileName = curPath;
-            end
-
-            if isempty(curLocId)
-              fprintf(2,' -- -- Input Required -- --\n');
-              locId = input('Specify the location for the SFR toolbox  : ','s');
-            else
-              locId = curLocId;
-            end
-
+            assert(~isempty(curPath), 'SciFileRepos:setlocation',...
+              ['Cannot get the location structure without first setting '...
+              'the location using SFRSETLOCATION.']);
+            
+            fileName = curPath;
+            locId    = curLocId;
+            
           case 1
+            switch option
+              case 'get'
+                assert(~isempty(curPath), 'SciFileRepos:setlocation',...
+                  ['Cannot get the location structure without first setting '...
+                  'the location using SFRSETLOCATION.']);
+            
+                fileName = curPath;
+                locId    = curLocId;
+              case 'set'
+                title = 'Select your HDSRepos XML Specification';
+                [FileName, PathName] = uigetfile('*.xml', title, 'HDSRepos.xml');
+                assert(ischar(FileName),'SciFileRepos:reposlocation',...
+                  'User cancelled loading the XML file.')
+                fileName = fullfile(PathName,FileName);
+                
+                fprintf(2,' -- -- Input Required -- --\n');
+                locId = input('Specify the location for the SFR toolbox  : ','s');
+            end 
+
+          case 2
+            assert(strcmp(option,'set'), 'SciFileRepos:setlocation',...
+              ['Multiple input arguments are only valid for ''setting'' the '...
+              'location.']);
+            
             if isempty(curPath)
               [FileName, PathName]    = uigetfile();
+              assert(ischar(FileName),'SciFileRepos:reposlocation',...
+                'User cancelled loading the XML file.')
               fileName = fullfile(PathName,FileName);
             else
               fileName = curPath;
             end
+            
+          case 3
+            assert(strcmp(option,'set'), 'SciFileRepos:setlocation',...
+              ['Multiple input arguments are only valid for ''setting'' the '...
+              'location.']);
+            
           otherwise
         end
 
@@ -878,6 +922,7 @@ classdef SFRepos < dynamicprops
         else
           rootStruct = SFRepos.loadReposStruct(locId, fileName);
           curPath = fileName;
+          
           curLocId = locId;
           out = rootStruct;
         end
@@ -927,7 +972,7 @@ classdef SFRepos < dynamicprops
     
     function out = loadReposStruct(locId, filename)
       % LOADREPOSSTRUCT  Loads the repos structure from XML
-      %   This method is protected and is only accessed by GETREPOS.
+      %   This method is protected and is only accessed by reposlocation.
       
       try
         assert(exist(filename,'file')==2, 'SCIFileRepos:LoadRepos_File',...
@@ -963,6 +1008,7 @@ classdef SFRepos < dynamicprops
             n = strtrim(char(allReposObjs.item(i-1).getAttribute('id')));
             t = strtrim(char(allReposObjs.item(i-1).getAttribute('path')));
             out.(n) = t;
+            out.locID = locId;
           end
         catch ME
           throw(MException('SCIFileRepos:LoadRepos_fileError',...
@@ -974,5 +1020,4 @@ classdef SFRepos < dynamicprops
       end        
     end
   end
-  
 end
