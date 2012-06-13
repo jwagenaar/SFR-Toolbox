@@ -1,4 +1,4 @@
-function data = getMefByChannel( obj, channels, indices, filePath, ~)
+function data = getMefByChannel( obj, channels, indeces, filePath, ~)
   %GETMEFBYCHANNEL See infoBinaryByChannel
 
   % EXTERNAL FILE REQUIREMENTS (functions)
@@ -20,14 +20,14 @@ function data = getMefByChannel( obj, channels, indices, filePath, ~)
   assert(issorted(indeces), 'SciFileRepos:getMEF',...
     'The GETMEF method only supports sorted continuous indeces.');
   lIndeces = length(indeces);
-  assert(lIndeces == (indeces(lIndeces)-indeces(1)), 'SciFileRepos:getMEF',...
+  assert(lIndeces == (indeces(lIndeces)-indeces(1)+1), 'SciFileRepos:getMEF',...
     'The GETMEF method only supports sorted continuous indeces.');
   
-  data = zeros(length(indices), length(channels));
+  data = zeros(length(indeces), length(channels));
   for iChan = 1:length(channels)
     % Get information from mef header and index
     fileName      = fullfile(filePath, obj.files{channels(iChan)});
-    data(:,iChan) = decomp_mef(fileName, indices(1), indices(lIndeces), '');            
+    data(:,iChan) = decomp_mef(fileName, indeces(1), indeces(lIndeces), '');            
   end
 
 
