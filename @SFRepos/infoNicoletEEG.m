@@ -2,7 +2,9 @@ function out = infoNicoletEEG(obj, locPath, option)
   %NICOLETEEG  Reads files from the Nicolet .eeg fileformat.
   %
   %   The NicoletEEG format consists of one vector with channels in
-  %   sequence, repeating for every individule sample. 
+  %   sequence, repeating for every individule sample. Additionally, the Nicolet
+  %   format has header files with a '.bni' extension that contain additional
+  %   information about the dataset. 
   %
   %   Required attributes:
   %     none

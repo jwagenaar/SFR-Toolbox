@@ -147,7 +147,7 @@ classdef SFRepos < dynamicprops
         aux = getinfo(obj, 'init');
         obj.reqAttr  = aux.requiredAttr;
         obj.optAttr  = aux.optionalAttr;
-        obj.dataInfo = struct('format',aux.format, 'size',aux.size);
+        obj.dataInfo = struct('format',aux.format, 'size',uint64(aux.size));
         
         % Check if loaded typeAttr are required or optional.
         checkReqAttr = false(length(obj.reqAttr),1);
