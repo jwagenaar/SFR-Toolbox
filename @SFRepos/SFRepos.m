@@ -125,7 +125,7 @@ classdef SFRepos < dynamicprops
         obj.infoFcn = str2func(sprintf('info%s',type));
 
         if nargin > 4
-          assert(iscell(typeAttr) && isvector(typeAttr), ...
+          assert((iscell(typeAttr) && isvector(typeAttr)) || isempty(typeAttr), ...
             'SCIFileRepos:SFRepos',...
             'TYPEATTR input has to be a vector of cells.')
           assert(mod(length(typeAttr),2)==0, ...
@@ -234,6 +234,9 @@ classdef SFRepos < dynamicprops
 
         elseif strcmp(s(1).subs, 'attr')
           out = getinfo(obj, 'info');
+          if length(s) > 1
+            out = builtin('subsref',out, s(2:end));
+          end
         else
           out = builtin('subsref', obj, s);
         end
