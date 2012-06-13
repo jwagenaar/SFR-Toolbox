@@ -19,7 +19,7 @@
           <a id="forkme_banner" href="https://github.com/jwagenaar/Scientific-File-Repository-for-Matlab">View on GitHub</a>
 
           <h1 id="project_title">SFR Toolbox for Matlab</h1>
-          <h2 id="project_tagline">Standardize Scientific File Acces in Matlab.</h2>
+          <h2 id="project_tagline">Standardized Scientific File Access in Matlab.</h2>
 
             <section id="downloads">
               <a class="zip_download_link" href="https://github.com/jwagenaar/Scientific-File-Repository-for-Matlab/zipball/master">Download this project as a .zip file</a>
@@ -37,13 +37,13 @@
 
 <h3>Object oriented data access.</h3>
 
-<p>Vendors of data acquisition systems for multichannel continuous data (i.e. TDT, Nicolet, Neuralynx, Blackrock, etc.) use various file formats to store their data. To analyze these data, a scientific lab needs to write methods for each individual system which can result in an inefficient workflow in the lab.</p>
+<p>Data acquisition systems (i.e. TDT, Nicolet, Neuralynx, Blackrock, etc.) use various file formats to store their data. To analyze these data, a scientific lab needs to write methods for each individual system which can result in an inefficient workflow in the lab.</p>
 
 <p>This toolbox addresses this issue by representing a dataset (which can consist of 1 or more files) by a single object. The user specifies which files belong to the dataset and which data-format is used in the files. The user can then access the raw data and the meta-data using the properties 'data' and 'attr' of the created object. The toolbox automatically uses the correct 'getMethods' for the associated file-format without any additional input from the user.</p>
 
 <h3>Specific GET methods per file -format</h3>
 
-<p>The strength of this toolbox is that there is a simple template that can be used to add support for additional file-formats. Basically, only two files are required to add support. An INFOMethod should be created according to a simple specification that returns meta-information in the form of a MATLAB structure and information that is used during the object construction. A GETMethod should return the data in a 2D array ([indeces channels]), utilizing the file-names that are provided in the object.</p>
+<p>The strength of this toolbox is that there is a simple template that can be used to add support for additional file-formats. Basically, only two files are required to add support. An INFOMethod should return meta-information about the data in the form of a MATLAB structure and some initiation values that are used during the object construction. A GETMethod should return the data in a 2D array [indeces channels], utilizing the file-names that are provided in the object.</p>
 
 <p>Additional features allow the user to improve efficiency by caching information from the GETMethod and allow the user to add meta-information directly to the object.</p>
 
@@ -55,7 +55,7 @@
 
 <ol>
 <li> Download the project and save the downloaded folder on the Matlab path.</li>
-<li> Copy the 'sample_ReposFile.xml' to a different location and open using a text-editor.</li>
+<li> Copy the 'sample_ReposFile.xml' to a different location and open with Matlab.</li>
 <li> Change the path attribute of the line that starts with  to the location 
 where you saved the project.</li>
 </ol><h3>Viewing the example data.</h3>
