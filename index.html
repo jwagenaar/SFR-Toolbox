@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="SFR Toolbox for Matlab : Standardize Scientific File Acces in Matlab." />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>SFR Toolbox for Matlab</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/jwagenaar/Scientific-File-Repository-for-Matlab">View on GitHub</a>
+
+          <h1 id="project_title">SFR Toolbox for Matlab</h1>
+          <h2 id="project_tagline">Standardize Scientific File Acces in Matlab.</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/jwagenaar/Scientific-File-Repository-for-Matlab/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/jwagenaar/Scientific-File-Repository-for-Matlab/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h2>Scientific File Repository Toolbox</h2>
+
+<p>This toolbox can be used to access scientific data from a variety of different file-formats using standardized syntax. The toolbox assumes that your scientific data consists of continuous data on multiple channels which can be represented by a large 2D array of numerics. In addition, the files may contain attributes describing the data.</p>
+
+<h3>Object oriented data access.</h3>
+
+<p>Vendors of data acquisition systems for multichannel continuous data (i.e. TDT, Nicolet, Neuralynx, Blackrock, etc.) use various file formats to store their data. To analyze these data, a scientific lab needs to write methods for each individual system which can result in an inefficient workflow in the lab.</p>
+
+<p>This toolbox addresses this issue by representing a dataset (which can consist of 1 or more files) by a single object. The user specifies which files belong to the dataset and which data-format is used in the files. The user can then access the raw data and the meta-data using the properties 'data' and 'attar' of the created object. The toolbox automatically uses the correct 'getMethods' for the associated file-format without any additional input from the user.</p>
+
+<h3>Specific GET methods per file -format</h3>
+
+<p>The strength of this toolbox is that there is a simple template that can be used to add support for additional file-formats. Basically, only two files are required to add support. An INFOMethod should be created according to a simple specification that returns meta-information in the form of a MATLAB structure and information that is used during the object construction. A GETMethod should return the data in a 2D array ([indeces channels]), utilizing the file-names that are provided in the object.</p>
+
+<p>Additional features allow the user to improve efficiency by caching information from the GETMethod and allow the user to add meta-information directly to the object.</p>
+
+<h3>File Location manager</h3>
+
+<p>The toolbox uses a user-specific XML file to indicate where the files are located on the computer. The user can switch dynamically between multiple sets of locations which can be useful if the path to a specific file changes when the folder is accessed from home or from work. It is also possible to temporarily override the location and specify a direct path to the files.</p>
+
+<h3>Installation</h3>
+
+<ol>
+<li> Download the project and save the downloaded folder on the Matlab path.</li>
+<li> Copy the 'sample_ReposFile.xml' to a different location and open using a text-editor.</li>
+<li> Change the path attribute of the line that starts with  to the location 
+where you saved the project.</li>
+</ol><h3>Viewing the example data.</h3>
+
+<ol>
+<li> Start Matlab and browse to the \SFRExample folder.</li>
+<li> Set your SFR-location using:  sfrsetlocation()</li>
+<li> Load the 'repos.mat' file in matlab.</li>
+<li> View the data using:  repos.data(1:1000, 1:4)</li>
+</ol>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">SFR Toolbox for Matlab maintained by <a href="https://github.com/jwagenaar">jwagenaar</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+              <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-32525167-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+
+  </body>
+</html>
