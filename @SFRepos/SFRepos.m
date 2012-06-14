@@ -198,8 +198,8 @@ classdef SFRepos < dynamicprops
         if strcmp(s(1).subs,'data')
           switch length(s)
             case 1
-              chIndeces = 1:obj.dataInfo.size(1);
-              valueIndeces = 1:obj.dataInfo.size(2);
+              chIndeces = uint64(1) : uint64(obj.dataInfo.size(1));
+              valueIndeces = uint64(1) : uint64(obj.dataInfo.size(2));
               out = getdata(obj, chIndeces, valueIndeces);
             case 2
               assert(strcmp(s(2).type,'()'),'SciFileRepos:subsref', ...
@@ -210,7 +210,7 @@ classdef SFRepos < dynamicprops
               valueIndeces = s(2).subs{1};
               if ischar(chIndeces)
                 if strcmp(chIndeces,':')
-                  chIndeces = 1:obj.dataInfo.size(2);
+                  chIndeces = uint64(1) : uint64(obj.dataInfo.size(2));
                 else
                   error('SciFileRepos:subsref', ...
                     'Incorrect indexing of the data property.')
@@ -218,20 +218,31 @@ classdef SFRepos < dynamicprops
               end
               if ischar(valueIndeces)
                 if strcmp(valueIndeces,':')
-                  valueIndeces = 1:obj.dataInfo.size(1);
+                  valueIndeces = uint64(1) : uint64(obj.dataInfo.size(1));
                 else
                   error('SciFileRepos:subsref', ...
                     'Incorrect indexing of the data property.')
                 end
               end
 
+              % Check precision of the indeces. This is way faster than
+              % automatically change to uint64 even if it not necessary.
+              if isa(valueIndeces, 'double') || isa(valueIndeces, 'single')
+                if eps(max(valueIndeces)) > 0.01
+                  error('SciFileRepos:subsref', ...
+                    [' Unable to use ''double/single'' precision for indeces ' ...
+                    'of this magnitude.\n Please use ''uint64'' for '...
+                    'the index values.']);
+                end
+              end
+                  
               out = getdata(obj, valueIndeces, chIndeces);
             otherwise
               error('SciFileRepos:subsref', ...
                 ['Cannot subindex more than one level in the data property '...
                 'of an SFRepos.']);
           end
-
+          
         elseif strcmp(s(1).subs, 'attr')
           out = getinfo(obj, 'info');
           if length(s) > 1
