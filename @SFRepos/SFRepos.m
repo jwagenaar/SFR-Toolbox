@@ -195,14 +195,14 @@ classdef SFRepos < dynamicprops
     function varargout = subsref(obj, s)
       
       try
-        
-        objLength = length(obj);
-        
+                
         % Check if array
         if any(strcmp(s(1).type,{'()' '{}'}))
           obj = builtin('subsref', obj, s(1));
           s(1) = [];
         end
+        
+        objLength = length(obj);
         
         if ~isempty(s)
           assert(strcmp(s(1).type, '.'), 'SciFileRepos:subsref', ...
