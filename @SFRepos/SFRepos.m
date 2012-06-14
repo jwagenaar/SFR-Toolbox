@@ -195,69 +195,129 @@ classdef SFRepos < dynamicprops
     function varargout = subsref(obj, s)
       
       try
-        if strcmp(s(1).subs,'data')
-          switch length(s)
-            case 1
-              chIndeces = uint64(1) : uint64(obj.dataInfo.size(1));
-              valueIndeces = uint64(1) : uint64(obj.dataInfo.size(2));
-              out = getdata(obj, chIndeces, valueIndeces);
-            case 2
-              assert(strcmp(s(2).type,'()'),'SciFileRepos:subsref', ...
-                ['Cannot use any other indexing than ''()'' in the data '...
-                'property of an SFRepos.']);
+        % Check if array
+        if any(strcmp(s(1).type,{'()' '{}'}))
+          obj = builtin('subsref', obj, s(1));
+          s(1) = [];
+        end
+        
+        if ~isempty(s)
+          assert(strcmp(s(1).type, '.'), 'SciFileRepos:subsref', ...
+            'Incorrect syntax for objects of type SFRepos.');
 
-              chIndeces = s(2).subs{2};
-              valueIndeces = s(2).subs{1};
-              if ischar(chIndeces)
-                if strcmp(chIndeces,':')
-                  chIndeces = uint64(1) : uint64(obj.dataInfo.size(2));
-                else
-                  error('SciFileRepos:subsref', ...
-                    'Incorrect indexing of the data property.')
-                end
-              end
-              if ischar(valueIndeces)
-                if strcmp(valueIndeces,':')
-                  valueIndeces = uint64(1) : uint64(obj.dataInfo.size(1));
-                else
-                  error('SciFileRepos:subsref', ...
-                    'Incorrect indexing of the data property.')
-                end
-              end
+          if strcmp(s(1).subs,'data')
+            
+            % Get get channelIndeces and valueIndeces.
+            switch length(s)
+              case 1
+                chIndeces = uint64(1) : uint64(obj.dataInfo.size(1));
+                valueIndeces = uint64(1) : uint64(obj.dataInfo.size(2));
+              case 2
+                assert(strcmp(s(2).type,'()'),'SciFileRepos:subsref', ...
+                  ['Cannot use any other indexing than ''()'' in the data '...
+                  'property of an SFRepos.']);
 
-              % Check precision of the indeces. This is way faster than
-              % automatically change to uint64 even if it not necessary.
-              if isa(valueIndeces, 'double') || isa(valueIndeces, 'single')
-                if eps(max(valueIndeces)) > 0.01
-                  error('SciFileRepos:subsref', ...
-                    [' Unable to use ''double/single'' precision for indeces ' ...
-                    'of this magnitude.\n Please use ''uint64'' for '...
-                    'the index values.']);
+                chIndeces = s(2).subs{2};
+                valueIndeces = s(2).subs{1};
+                if ischar(chIndeces)
+                  if strcmp(chIndeces,':')
+                    chIndeces = uint64(1) : uint64(obj.dataInfo.size(2));
+                  else
+                    error('SciFileRepos:subsref', ...
+                      'Incorrect indexing of the data property.')
+                  end
                 end
+                if ischar(valueIndeces)
+                  if strcmp(valueIndeces,':')
+                    valueIndeces = uint64(1) : uint64(obj.dataInfo.size(1));
+                  else
+                    error('SciFileRepos:subsref', ...
+                      'Incorrect indexing of the data property.')
+                  end
+                end
+
+                % Check precision of the indeces. This is way faster than
+                % automatically change to uint64 even if it not necessary. This
+                % should in reality never be an issue (maxValue approx > 1e14).
+                if isa(valueIndeces, 'double') || isa(valueIndeces, 'single')
+                  if eps(max(valueIndeces)) > 0.01
+                    error('SciFileRepos:subsref', ...
+                      [' Unable to use ''double/single'' precision for indeces ' ...
+                      'of this magnitude.\n Please use ''uint64'' for '...
+                      'the index values.']);
+                  end
+                end                
+              otherwise
+                error('SciFileRepos:subsref', ...
+                  ['Cannot subindex more than one level in the data property '...
+                  'of an SFRepos.']);
+            end
+            
+            % Get the data.
+            if length(obj) == 1
+              obj = getdata(obj, valueIndeces, chIndeces);
+            else
+              out = cell(length(obj),1);
+              for iObj = 1: length(obj)
+                out(iObj) = {getdata(obj(iObj), valueIndeces, chIndeces)};
               end
-                  
-              out = getdata(obj, valueIndeces, chIndeces);
-            otherwise
-              error('SciFileRepos:subsref', ...
-                ['Cannot subindex more than one level in the data property '...
-                'of an SFRepos.']);
+              obj = out;
+            end
+
+          elseif strcmp(s(1).subs, 'attr')
+            if length(obj) == 1
+              obj = getinfo(obj, 'info');
+              
+              % Get subsequent subsets (in case of structure);
+              if length(s) > 1
+                obj = builtin('subsref',obj, s(2:end));
+              end
+            else
+              out = cell(length(obj),1);
+              for iObj = 1:length(obj)
+                out(iObj) = {getinfo(obj(iObj), 'info')};
+              end
+              obj = out;
+            end
+          elseif length(s) == 1
+            % Single substruct....
+            try
+              if length(obj) == 1
+                obj = obj.(s.subs);
+              else
+                obj = {obj.(s.subs)};
+              end
+            catch ME %#ok<NASGU>
+              % Could fail because trying to access dynamic property.
+              try
+                out = cell(length(obj),1);
+                for iObj = 1: length(obj);
+                  out(iObj) = {builtin('subsref', obj(iObj), s)};
+                end
+                obj = out;
+              catch ME
+                error('SciFileRepos:subsref', ...
+                  ['Could not return values: Property does not exist or ' ...
+                  'property is not added using ADDATTR in all objects.']);
+              end
+            end
+          else
+            % Multiple substruct....
+            assert(length(obj) == 1, 'SciFileRepos:subsref', ...
+              'Dot name reference on non-scalar structure.'); 
+            obj = builtin('subsref', obj, s);
           end
-          
-        elseif strcmp(s(1).subs, 'attr')
-          out = getinfo(obj, 'info');
-          if length(s) > 1
-            out = builtin('subsref',out, s(2:end));
-          end
-        else
-          out = builtin('subsref', obj, s);
         end
         
         % Format varargout such that it corresponds with the nargout value.
         if nargout <= 1
-          varargout = {out};% Nargout equals 1 --> return single cell. 
+          varargout = {obj};% Nargout equals 1 --> return single cell. 
         else
-          varargout = out;  % Nargout does not equal 1 --> return cell array. 
+          varargout = obj;  % Nargout does not equal 1 --> return cell array. 
         end
+        
+        assert(length(varargout) == nargout || nargout == 0, 'SciFileRepos:subsref', ...
+          sprintf(' Not all output arguments are assigned during call.' ));
         
       catch ME
         [err, isScifi] = SFRepos.sfrcheckerror(ME, false);
@@ -712,14 +772,22 @@ classdef SFRepos < dynamicprops
       end
 
       % Create links to methods
-      reposloc = SFRepos.reposlocation();
+      
       Link0 = sprintf(': <a href="matlab:help(''info%s'')">%s</a>',...
         obj.typeId,obj.typeId);
       Link1 = sprintf('<a href="matlab:help(''%s'')">%s</a>',class(obj),class(obj));
       Link2 = sprintf('<a href="matlab:methods(%s)">Methods</a>',class(obj));
-      Link3 = sprintf(['<a href="matlab:display(sprintf(''\\n  Location: %s\\n  Full Path: %s\\n''))"'...
-        '>Location</a>'],reposloc.locID,getpath(obj));
-
+      
+      try
+        reposloc = SFRepos.reposlocation();
+        Link3 = sprintf(['<a href="matlab:display(sprintf(''\\n  Location: %s\\n  Full Path: %s\\n''))"'...
+          '>Location</a>'],reposloc.locID, getpath(obj));
+      catch ME
+        Link3 = sprintf(['<a href="matlab:display(sprintf(''\\n  Location: %s\\n  Full Path: %s\\n''))"'...
+          '>Location</a>'],'Unknown', 'Unknown');
+      end
+      
+      
       if length(obj) == 1 
 
         % Check if object is deleted.
