@@ -195,6 +195,9 @@ classdef SFRepos < dynamicprops
     function varargout = subsref(obj, s)
       
       try
+        
+        objLength = length(obj);
+        
         % Check if array
         if any(strcmp(s(1).type,{'()' '{}'}))
           obj = builtin('subsref', obj, s(1));
@@ -254,18 +257,18 @@ classdef SFRepos < dynamicprops
             end
             
             % Get the data.
-            if length(obj) == 1
+            if objLength == 1
               obj = getdata(obj, valueIndeces, chIndeces);
             else
-              out = cell(length(obj),1);
-              for iObj = 1: length(obj)
+              out = cell(objLength,1);
+              for iObj = 1: objLength
                 out(iObj) = {getdata(obj(iObj), valueIndeces, chIndeces)};
               end
               obj = out;
             end
 
           elseif strcmp(s(1).subs, 'attr')
-            if length(obj) == 1
+            if objLength == 1
               obj = getinfo(obj, 'info');
               
               % Get subsequent subsets (in case of structure);
@@ -273,8 +276,8 @@ classdef SFRepos < dynamicprops
                 obj = builtin('subsref',obj, s(2:end));
               end
             else
-              out = cell(length(obj),1);
-              for iObj = 1:length(obj)
+              out = cell(objLength,1);
+              for iObj = 1:objLength
                 out(iObj) = {getinfo(obj(iObj), 'info')};
               end
               obj = out;
@@ -282,7 +285,7 @@ classdef SFRepos < dynamicprops
           elseif length(s) == 1
             % Single substruct....
             try
-              if length(obj) == 1
+              if objLength == 1
                 obj = obj.(s.subs);
               else
                 obj = {obj.(s.subs)};
@@ -290,8 +293,8 @@ classdef SFRepos < dynamicprops
             catch ME %#ok<NASGU>
               % Could fail because trying to access dynamic property.
               try
-                out = cell(length(obj),1);
-                for iObj = 1: length(obj);
+                out = cell(objLength,1);
+                for iObj = 1: objLength;
                   out(iObj) = {builtin('subsref', obj(iObj), s)};
                 end
                 obj = out;
@@ -303,7 +306,7 @@ classdef SFRepos < dynamicprops
             end
           else
             % Multiple substruct....
-            assert(length(obj) == 1, 'SciFileRepos:subsref', ...
+            assert(objLength == 1, 'SciFileRepos:subsref', ...
               'Dot name reference on non-scalar structure.'); 
             obj = builtin('subsref', obj, s);
           end
