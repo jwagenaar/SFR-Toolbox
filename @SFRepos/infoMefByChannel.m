@@ -65,7 +65,7 @@ function out = infoMefByChannel(obj, locPath, option)
       % Find number of samples.
       filePath = fullfile(locPath, obj.files{1});
       assert(exist(filePath,'file')==2, 'SciFileRepos:sizeBinByChannel',...
-        'File does not exist.'); 
+        sprintf('File does not exist:  %s',filePath)); 
 
       mh = ReadMefHeaderAndIndexData(filePath);
       nrValues = mh.number_of_samples;
@@ -76,7 +76,8 @@ function out = infoMefByChannel(obj, locPath, option)
       case 'info'
           filePath = fullfile(locPath, obj.files{1});
           assert(exist(filePath,'file')==2, 'SciFileRepos:sizeBinByChannel',...
-              'File does not exist.');
+              sprintf('File does not exist:  %s',filePath));
+            
           mh = ReadMefHeaderAndIndexData(filePath);
           out.recording_start_time = mh.recording_start_time; % times in us
           out.recording_end_time = mh.recording_end_time;
