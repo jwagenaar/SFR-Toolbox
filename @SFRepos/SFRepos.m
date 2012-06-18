@@ -84,7 +84,8 @@ classdef SFRepos < dynamicprops
     attrList   = {}   % Pointers to the dynamic attribute list.
     dataFcn           % Function handle for getting data.
     infoFcn           % Function handle for getting meta-info from data.
-    dataInfo          % 1x2 vector of data size [nrValues nrChannels]
+    dataInfo   = ...
+      struct('size',[0 0], 'format','double') 
     reqAttr    = {}   % Cell array with required Attributes 
     optAttr    = {}   % Cell array with optional Attributes.
   end
@@ -392,6 +393,11 @@ classdef SFRepos < dynamicprops
       
       try
         curRoot = obj.reposlocation();
+        
+        fNames = fieldnames(curRoot);
+        assert(any(strcmp(obj.rootId,fNames)), 'SciFileRepos:getinfo', ...
+          sprintf(['Unable to find the location: "%s" in the location: "%s" '...
+            'of the current location library.'],obj.rootId, curRoot.locID));
         curRoot = curRoot.(obj.rootId);
         filePath = fullfile(curRoot, obj.subPath);
         
@@ -514,6 +520,11 @@ classdef SFRepos < dynamicprops
           'SciFileRepos:getdata','Index out of range.' );
         
         curRoot = obj.reposlocation();
+        fNames = fieldnames(curRoot);
+        assert(any(strcmp(obj.rootId,fNames)), 'SciFileRepos:getinfo', ...
+          sprintf(['Unable to find the location: "%s" in the location: "%s" '...
+            'of the current location library.'],obj.rootId, curRoot.locID));
+        
         curRoot = curRoot.(obj.rootId);
         filePath = fullfile(curRoot, obj.subPath);
         
@@ -785,7 +796,7 @@ classdef SFRepos < dynamicprops
         reposloc = SFRepos.reposlocation();
         Link3 = sprintf(['<a href="matlab:display(sprintf(''\\n  Location: %s\\n  Full Path: %s\\n''))"'...
           '>Location</a>'],reposloc.locID, getpath(obj));
-      catch ME
+      catch ME %#ok<NASGU>
         Link3 = sprintf(['<a href="matlab:display(sprintf(''\\n  Location: %s\\n  Full Path: %s\\n''))"'...
           '>Location</a>'],'Unknown', 'Unknown');
       end
@@ -1093,8 +1104,9 @@ classdef SFRepos < dynamicprops
             n = strtrim(char(allReposObjs.item(i-1).getAttribute('id')));
             t = strtrim(char(allReposObjs.item(i-1).getAttribute('path')));
             out.(n) = t;
-            out.locID = locId;
+            
           end
+          out.locID = locId;
         catch ME
           throw(MException('SCIFileRepos:LoadRepos_fileError',...
             'Unable to read XML file.'));
