@@ -1,4 +1,4 @@
-function data = getMefByChannel( obj, channels, indeces, filePath, ~)
+function data = getMefByChannel(obj, channels, indeces, filePath, ~)
   %GETMEFBYCHANNEL See infoBinaryByChannel
 
   % EXTERNAL FILE REQUIREMENTS (functions)
@@ -13,12 +13,16 @@ function data = getMefByChannel( obj, channels, indeces, filePath, ~)
   % produced or made available by MathWorks, Inc.
   
   % Author: Allison Pearce, Litt Lab, June 2012
+  
+  % During the first time that the decomp_mef function is called, it will index
+  % the mef file and store the indexing array in the userData of the object.
+  % This will significantly speedup further requests. 
 
   assert(exist('decomp_mef','file') == 3,'SciFileRepos:getMef',...
     'Cannot find the DECOMP_MEF mex file.');
   
   assert(issorted(indeces), 'SciFileRepos:getMEF',...
-    'The GETMEF method only supports sorted continuous indeces.');
+    'The GETMEF method only supports continuous sorted indeces.');
   lIndeces = length(indeces);
   assert(lIndeces == (indeces(lIndeces)-indeces(1)+1), 'SciFileRepos:getMEF',...
     'The GETMEF method only supports sorted continuous indeces.');
@@ -35,31 +39,16 @@ function data = getMefByChannel( obj, channels, indeces, filePath, ~)
     
     if getIndexArray
       
-      try
       % Start Timer for showing progress for reading header.
-      % Init Timer
-      display('Indexing MEF file.');
-      progress_timer = timer;
-      set(progress_timer, 'ExecutionMode', 'FixedRate');
-      set(progress_timer, 'BusyMode','queue');
-      set(progress_timer, 'Period', 1);
-      set(progress_timer, 'StartDelay',1);
-      set(progress_timer, 'TimerFcn', @(x,y)fprintf('.'));
-      start(progress_timer);
+      fprintf('Indexing MEF file... (only during first call)');
       
 %       [data(:, iChan) obj.userData] = ...
 %         decomp_mef(fileName, indeces(1), indeces(lIndeces), '');
       data(:,iChan) = decomp_mef(fileName, indeces(1), indeces(lIndeces), '');
-      stop(progress_timer);
      
-      delete(progress_timer);
-      fprintf('\nFile Indexing complete.');
+      fprintf(' ...done.\n');
       getIndexArray = false;
-      catch ME
-        delete(progress_timer);
-        rethrow(ME);
-      end
-      
+
     else
       data(:,iChan) = decomp_mef(fileName, indeces(1), indeces(lIndeces), '');  
     end
@@ -67,4 +56,5 @@ function data = getMefByChannel( obj, channels, indeces, filePath, ~)
 
 
 end
+
 
