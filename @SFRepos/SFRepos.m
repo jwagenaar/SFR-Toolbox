@@ -84,7 +84,8 @@ classdef SFRepos < dynamicprops
     attrList   = {}   % Pointers to the dynamic attribute list.
     dataFcn           % Function handle for getting data.
     infoFcn           % Function handle for getting meta-info from data.
-    dataInfo          % 1x2 vector of data size [nrValues nrChannels]
+    dataInfo   = ...
+      struct('size',[0 0], 'format','double') 
     reqAttr    = {}   % Cell array with required Attributes 
     optAttr    = {}   % Cell array with optional Attributes.
   end
@@ -145,7 +146,9 @@ classdef SFRepos < dynamicprops
         
         % Get File-Format information
         aux = getinfo(obj, 'init');
-        obj.reqAttr  = aux.requiredAttr;
+
+          
+          obj.reqAttr  = aux.requiredAttr;
         obj.optAttr  = aux.optionalAttr;
         obj.dataInfo = struct('format',aux.format, 'size',uint64(aux.size));
         
@@ -392,6 +395,11 @@ classdef SFRepos < dynamicprops
       
       try
         curRoot = obj.reposlocation();
+        
+        fNames = fieldnames(curRoot);
+        assert(any(strcmp(obj.rootId,fNames)), 'SciFileRepos:getinfo', ...
+          sprintf(['Unable to find the location: "%s" in the location: "%s" '...
+            'of the current location library.'],obj.rootId, curRoot.locID));
         curRoot = curRoot.(obj.rootId);
         filePath = fullfile(curRoot, obj.subPath);
         
@@ -514,6 +522,11 @@ classdef SFRepos < dynamicprops
           'SciFileRepos:getdata','Index out of range.' );
         
         curRoot = obj.reposlocation();
+        fNames = fieldnames(curRoot);
+        assert(any(strcmp(obj.rootId,fNames)), 'SciFileRepos:getinfo', ...
+          sprintf(['Unable to find the location: "%s" in the location: "%s" '...
+            'of the current location library.'],obj.rootId, curRoot.locID));
+        
         curRoot = curRoot.(obj.rootId);
         filePath = fullfile(curRoot, obj.subPath);
         
@@ -785,7 +798,7 @@ classdef SFRepos < dynamicprops
         reposloc = SFRepos.reposlocation();
         Link3 = sprintf(['<a href="matlab:display(sprintf(''\\n  Location: %s\\n  Full Path: %s\\n''))"'...
           '>Location</a>'],reposloc.locID, getpath(obj));
-      catch ME
+      catch ME %#ok<NASGU>
         Link3 = sprintf(['<a href="matlab:display(sprintf(''\\n  Location: %s\\n  Full Path: %s\\n''))"'...
           '>Location</a>'],'Unknown', 'Unknown');
       end
@@ -953,8 +966,8 @@ classdef SFRepos < dynamicprops
         switch nargin
           case 0
             assert(~isempty(curPath), 'SciFileRepos:setlocation',...
-              ['Cannot get the location structure without first setting '...
-              'the location using SFRSETLOCATION.']);
+              ['Unable to load the location library whithout setting ' ...
+              'the path to the XML file using SFRSETLOCATION.']);
             
             fileName = curPath;
             locId    = curLocId;
@@ -963,8 +976,9 @@ classdef SFRepos < dynamicprops
             switch option
               case 'get'
                 assert(~isempty(curPath), 'SciFileRepos:setlocation',...
-                  ['Cannot get the location structure without first setting '...
-                  'the location using SFRSETLOCATION.']);
+                  ['Unable to load the location library whithout setting ' ...
+                  'the path to the XML file using SFRSETLOCATION.']);
+
             
                 fileName = curPath;
                 locId    = curLocId;
@@ -981,8 +995,8 @@ classdef SFRepos < dynamicprops
 
           case 2
             assert(strcmp(option,'set'), 'SciFileRepos:setlocation',...
-              ['Multiple input arguments are only valid for ''setting'' the '...
-              'location.']);
+              ['Using multiple input arguments is only allowed when '...
+              'the first argument of the method is ''set''']);
             
             if isempty(curPath)
               [FileName, PathName]    = uigetfile();
@@ -995,8 +1009,8 @@ classdef SFRepos < dynamicprops
             
           case 3
             assert(strcmp(option,'set'), 'SciFileRepos:setlocation',...
-              ['Multiple input arguments are only valid for ''setting'' the '...
-              'location.']);
+              ['Using multiple input arguments is only allowed when '...
+              'the first argument of the method is ''set''']);
             
           otherwise
         end
@@ -1081,7 +1095,7 @@ classdef SFRepos < dynamicprops
         % Find location
         matchIdx = find(strcmp(locId,locs),1);
         assert(~isempty(matchIdx), 'SCIFileRepos:LoadRepos_noLoc',...
-          sprintf('Unable to find the provided location: %s',locId));
+          sprintf('Unable to find the requested location: %s', locId));
 
         % Create struct with reposLocs
         try
@@ -1093,8 +1107,9 @@ classdef SFRepos < dynamicprops
             n = strtrim(char(allReposObjs.item(i-1).getAttribute('id')));
             t = strtrim(char(allReposObjs.item(i-1).getAttribute('path')));
             out.(n) = t;
-            out.locID = locId;
+            
           end
+          out.locID = locId;
         catch ME
           throw(MException('SCIFileRepos:LoadRepos_fileError',...
             'Unable to read XML file.'));
