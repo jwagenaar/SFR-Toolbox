@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<SFR_REPOSFILE user="Joost">
+<SFR_REPOSFILE user="userName">
    <LOC id="Work">
-     <REPOS id="SFRroot" path="/Volumes/g/public/Scientific_File_Repository_For_Matlab"></REPOS>
-     <REPOS id="HumanData" path="/Users/Data"></REPOS>
+     <REPOS id="SFRroot" path="/Scientific_File_Repository_For_Matlab"/>
+     <REPOS id="HumanData" path="/Users/Data"/>
    </LOC>
    <LOC id="Home">
-     <REPOS id="SFRroot" path="/Volumes/h/public/Scientific_File_Repository_For_Matlab"></REPOS>
-     <REPOS id="HumanData" path="/Users/Data"></REPOS>
+     <REPOS id="SFRroot" path="/Scientific_File_Repository_For_Matlab"/>
+     <REPOS id="HumanData" path="/Users/Data"/>
    </LOC>
 </SFR_REPOSFILE>  
