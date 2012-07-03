@@ -1,5 +1,5 @@
 classdef SFRepos < dynamicprops
-  %SFREPOS  Scientific File Repository container
+  %SFREPOS  Scientific File Repository Container
   %   This class is used to package a set of files and provide standardized
   %   syntax for accessing data from these files. The contents of an object of
   %   this class defines the file-type, the file location and other attributes
@@ -86,7 +86,7 @@ classdef SFRepos < dynamicprops
     infoFcn           % Function handle for getting meta-info from data.
     cleanFcn          % Function handle for cleaning up data.
     dataInfo   = ...
-      struct('size',[0 0], 'format','double') 
+      struct('size',[0 0], 'format','double') % Information about the data format.
     reqAttr    = {}   % Cell array with required Attributes 
     optAttr    = {}   % Cell array with optional Attributes.
   end
@@ -582,7 +582,8 @@ classdef SFRepos < dynamicprops
       try
         obj.cleanFcn(obj);
       catch ME
-        if strcmp(ME.identifier, 'MATLAB:noSuchMethodOrField')
+        if any(strcmp(ME.identifier, {'MATLAB:noSuchMethodOrField' ...
+            'MATLAB:UndefinedFunction'}))
           % Method does not exist, no problem because it is optional.
           return
         else
