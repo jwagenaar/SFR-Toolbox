@@ -85,8 +85,8 @@ classdef SFRepos < dynamicprops
     dataFcn           % Function handle for getting data.
     infoFcn           % Function handle for getting meta-info from data.
     cleanFcn          % Function handle for cleaning up data.
-    dataInfo   = ...
-      struct('size',[0 0], 'format','double') % Information about the data format.
+    dataInfo   = struct('size',[0 0], ...
+      'format','double') % Information about the data format and size.
     reqAttr    = {}   % Cell array with required Attributes 
     optAttr    = {}   % Cell array with optional Attributes.
   end
