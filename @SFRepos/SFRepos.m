@@ -84,10 +84,27 @@ classdef SFRepos < dynamicprops
     attrList   = {}   % Pointers to the dynamic attribute list.
     dataFcn           % Function handle for getting data.
     infoFcn           % Function handle for getting meta-info from data.
+    cleanFcn          % Function handle for cleaning up data.
     dataInfo   = ...
       struct('size',[0 0], 'format','double') 
     reqAttr    = {}   % Cell array with required Attributes 
     optAttr    = {}   % Cell array with optional Attributes.
+  end
+  
+  methods
+    function delete(obj)
+        %DELETE  Is called when object is deleted.
+        %   This method will force the cleanup method before removing the
+        %   object. This allows the user to define a specific cleanup method for
+        %   the selected file-format. 
+        %
+        %   For example, if the GET and/or ATTR methods for a particular
+        %   file-format use temporary files to cache some of the data, the
+        %   cleanup method can be used to remove these temporary files. These
+        %   files will also be removed when the object is deleted.
+        
+        cleanup(obj);
+    end 
   end
   
   methods (Sealed)
@@ -124,6 +141,7 @@ classdef SFRepos < dynamicprops
         % Set functionHandles
         obj.dataFcn = str2func(sprintf('get%s',type));
         obj.infoFcn = str2func(sprintf('info%s',type));
+        obj.cleanFcn = str2func(sprintf('clean%s',type));
 
         if nargin > 4
           assert((iscell(typeAttr) && isvector(typeAttr)) || isempty(typeAttr), ...
@@ -548,7 +566,9 @@ classdef SFRepos < dynamicprops
     function cleanup(obj)
       %CLEANUP  Removes data from transient properties.
       %   CLEANUP(OBJ) removes data from transient properties to allow Matlab to
-      %   perform garbage collection and make more memory available.
+      %   perform garbage collection and make more memory available. It also
+      %   runs the specific CLEAN-method for the associated file-format if it
+      %   exists (this is an optional method). 
       %
       %   This means that the USERDATA and FETCHCACHE should only be used to
       %   store variable temporarily and no methods should ever rely on data
@@ -556,6 +576,19 @@ classdef SFRepos < dynamicprops
       %
       %   These properties are meant to store temporary variable to improve
       %   performance, such as memmapfiles and previously fetched data.
+      
+      % Try to run the specific CLEAN method. This is an optional method, so no
+      % error when it does not exists.
+      try
+        obj.cleanFcn(obj);
+      catch ME
+        if strcmp(ME.identifier, 'MATLAB:noSuchMethodOrField')
+          % Method does not exist, no problem because it is optional.
+          return
+        else
+          rethrow(ME);
+        end
+      end
       
       obj.userData   = [];
       obj.fetchCache = [];
@@ -926,7 +959,7 @@ classdef SFRepos < dynamicprops
 
 
     end
-
+    
   end
     
   methods (Static)

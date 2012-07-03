@@ -27,9 +27,8 @@ function data = getMefByChannel(obj, channels, indeces, filePath, ~)
   assert(lIndeces == (indeces(lIndeces)-indeces(1)+1), 'SciFileRepos:getMEF',...
     'The GETMEF method only supports sorted continuous indeces.');
   
-  getIndexArray = true;
-  if ~isempty(obj.userData);
-    getIndexArray = false;
+  if isempty(obj.userData);
+    obj.userData = struct('map',cell(obj.dataInfo.size(2),1)); 
   end
   
   data = zeros(length(indeces), length(channels));
@@ -37,20 +36,34 @@ function data = getMefByChannel(obj, channels, indeces, filePath, ~)
     % Get information from mef header and index
     fileName      = fullfile(filePath, obj.files{channels(iChan)});
     
-    if getIndexArray
+    indexArray = obj.userData(channels(iChan)).map;
+    
+    if isempty(indexArray)
       
       % Start Timer for showing progress for reading header.
-      fprintf('Indexing MEF file... (only during first call)');
+      fprintf('Indexing MEF file, channel %i... (only during first call)', ...
+        channels(iChan));
       
-%       [data(:, iChan) obj.userData] = ...
-%         decomp_mef(fileName, indeces(1), indeces(lIndeces), '');
-      data(:,iChan) = decomp_mef(fileName, indeces(1), indeces(lIndeces), '');
+      [data(:, iChan) indexMap] = ...
+        decomp_mef(fileName, indeces(1), indeces(lIndeces), '');
+      %data(:,iChan) = decomp_mef(fileName, indeces(1), indeces(lIndeces), '');
      
+      randChar = [char(48:57) char(65:90) char(97:122)];
+      fileName = sprintf('tempMEFheader_%s.bin',randChar(1 + round(61*rand(10,1))));
+      
+      tempFileName = fullfile(tempdir, fileName);
+      fid = fopen(tempFileName,'w');
+      fwrite(fid, indexMap,'uint64');
+      fclose(fid);
+      
+      obj.userData(channels(iChan)).map = memmapfile(tempFileName, ...
+        'Format', 'uint64');
+      
       fprintf(' ...done.\n');
-      getIndexArray = false;
 
     else
-      data(:,iChan) = decomp_mef(fileName, indeces(1), indeces(lIndeces), '');  
+      data(:,iChan) = decomp_mef(fileName, indeces(1), indeces(lIndeces), ...
+        '', indexArray.Data);  
     end
   end
 
