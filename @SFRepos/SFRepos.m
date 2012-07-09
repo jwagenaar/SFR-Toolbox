@@ -234,8 +234,8 @@ classdef SFRepos < dynamicprops
             % Get get channelIndeces and valueIndeces.
             switch length(s)
               case 1
-                chIndeces = uint64(1) : uint64(obj.dataInfo.size(1));
-                valueIndeces = uint64(1) : uint64(obj.dataInfo.size(2));
+                chIndeces = uint64(1) : uint64(obj.dataInfo.size(2));
+                valueIndeces = uint64(1) : uint64(obj.dataInfo.size(1));
               case 2
                 assert(strcmp(s(2).type,'()'),'SciFileRepos:subsref', ...
                   ['Cannot use any other indexing than ''()'' in the data '...
