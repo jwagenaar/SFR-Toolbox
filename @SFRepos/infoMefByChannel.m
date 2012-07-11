@@ -7,7 +7,9 @@ function out = infoMefByChannel(obj, locPath, option)
   %   Required attributes:
   %     none
   %   Optional attributes:
-  %     none
+  %     'indexByBlock' (false) : Instead of providing the indeces in the data,
+  %     the Blocks are indexed such that data(1:2,1) returns the first block of
+  %     continuous data in the MEF file. The returned values are 
   %
   %   The 'init' option is called by the constructor method of the SFREPOS
   %   class and should return a structure with the properties: 'requiredAttr',
@@ -28,8 +30,6 @@ function out = infoMefByChannel(obj, locPath, option)
   %
   % This source file can be linked to GPL-incompatible facilities, 
   % produced or made available by MathWorks, Inc.
-  %
-  % Author: Allison Pearce, Litt Lab, June 2012
   %
   %
   % EXTERNAL FILE REQUIREMENTS (functions)
@@ -57,7 +57,8 @@ function out = infoMefByChannel(obj, locPath, option)
 
       % Set required and optional attributes.
       out.requiredAttr = {};
-      out.optionalAttr = {}; % No optional attributes.
+      out.optionalAttr = {'getByBlock' 'skipData' ...
+        'skipCheck' 'getByIndex'}; 
 
       % Find number of channels.
       nrChannels = length(obj.files);
@@ -81,7 +82,9 @@ function out = infoMefByChannel(obj, locPath, option)
           mh = read_mef2_header(filePath,'');
           out.recording_start_time = mh.recording_start_time; % times in us
           out.recording_end_time = mh.recording_end_time;
-          out.sampling_frequency = mh.sampling_frequency;
+          out.samplingFrequency = mh.sampling_frequency;
+          out.numberOfBlocks = mh.number_of_index_entries;
+          
           % can add any other data from a mef header
           
     otherwise
