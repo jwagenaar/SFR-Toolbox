@@ -166,7 +166,7 @@ classdef SFRepos < dynamicprops
         aux = getinfo(obj, 'init');
 
           
-          obj.reqAttr  = aux.requiredAttr;
+        obj.reqAttr  = aux.requiredAttr;
         obj.optAttr  = aux.optionalAttr;
         obj.dataInfo = struct('format',aux.format, 'size',uint64(aux.size));
         
@@ -236,6 +236,7 @@ classdef SFRepos < dynamicprops
               case 1
                 chIndeces = uint64(1) : uint64(obj.dataInfo.size(2));
                 valueIndeces = uint64(1) : uint64(obj.dataInfo.size(1));
+                optArgs = false;
               case 2
                 assert(strcmp(s(2).type,'()'),'SciFileRepos:subsref', ...
                   ['Cannot use any other indexing than ''()'' in the data '...
@@ -259,6 +260,12 @@ classdef SFRepos < dynamicprops
                       'Incorrect indexing of the data property.')
                   end
                 end
+                
+                if length(s(2).subs) > 2
+                  optArgs = true;
+                else
+                  optArgs = false;
+                end
 
                 % Check precision of the indeces. This is way faster than
                 % automatically change to uint64 even if it not necessary. This
@@ -277,13 +284,26 @@ classdef SFRepos < dynamicprops
                   'of an SFRepos.']);
             end
             
+            
             % Get the data.
             if objLength == 1
-              obj = getdata(obj, valueIndeces, chIndeces);
+              if optArgs
+                obj = getdata(obj, valueIndeces, chIndeces, s(2).subs{3:end});
+              else
+                obj = getdata(obj, valueIndeces, chIndeces);
+              end
+             
             else
               out = cell(objLength,1);
-              for iObj = 1: objLength
-                out(iObj) = {getdata(obj(iObj), valueIndeces, chIndeces)};
+              if optArgs
+                for iObj = 1: objLength
+                  out(iObj) = {getdata(obj(iObj),...
+                    valueIndeces, chIndeces,s(2).subs{3:end})};
+                end
+              else
+                for iObj = 1: objLength
+                  out(iObj) = {getdata(obj(iObj), valueIndeces, chIndeces)};
+                end
               end
               obj = out;
             end
@@ -489,13 +509,12 @@ classdef SFRepos < dynamicprops
         getAttr = struct();
         curIdx = 1;
         if nargin > 3
-          assert(mod(length(varargin),2)==0, 'SciFileRepos:getdata',...
-            'Incorrect number of input arguments.');
-          for i = 1:2:(length(varargin)-1)
-            assert(ischar(varargin{i}),'SciFileRepos:getdata',...
+          while curIdx <= length(varargin)
+            assert(ischar(varargin{curIdx}),'SciFileRepos:getdata',...
               'Attribute name should be a string');
             
-            isReq = find(strcmp(varargin{i},obj.reqAttr),1);
+            % Check if attr. is required attr.
+            isReq = find(strcmp(varargin{curIdx},obj.reqAttr),1);
             if ~isempty(isReq)
               checkReqAttr(isReq) = true;
               isReq = true;
@@ -504,13 +523,33 @@ classdef SFRepos < dynamicprops
             end
             
             if ~isReq
-              assert(any(strcmp(varargin{i}, obj.optAttr)), ...
+              assert(any(strcmp(varargin{curIdx}, obj.optAttr)), ...
                 'SciFileRepos:getdata',['Supplied attribute not required '...
                 'or optional for this fileformat.']);
             end
             
-            getAttr.(varargin{i}) =  varargin{i+1};
-            curIdx = curIdx+2;
+            % Check value for attribute if exist
+            if length(varargin) > curIdx
+              if ischar(varargin{curIdx+1})
+                isAttr = any(strcmp(varargin{curIdx+1}, ...
+                  [obj.reqAttr obj.optAttr]));
+                if isAttr
+                  getAttr.(varargin{curIdx}) =  true;
+                  curIdx = curIdx+1;
+                else
+                  getAttr.(varargin{curIdx}) =  varargin{curIdx+1};
+                  curIdx = curIdx+2;
+                end
+              else
+                getAttr.(varargin{curIdx}) =  varargin{curIdx+1};
+                curIdx = curIdx+2;
+              end
+            else
+              getAttr.(varargin{curIdx}) =  true;
+              curIdx = curIdx+1;
+            end
+            
+            
           end
         end
         
@@ -1045,7 +1084,8 @@ classdef SFRepos < dynamicprops
             assert(strcmp(option,'set'), 'SciFileRepos:setlocation',...
               ['Using multiple input arguments is only allowed when '...
               'the first argument of the method is ''set''']);
-            
+            curLocId = [];
+            curPath = [];
           otherwise
         end
 
