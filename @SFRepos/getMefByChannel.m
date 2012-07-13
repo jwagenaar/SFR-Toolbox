@@ -121,16 +121,16 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
           if discVecIdx
             data.discontVec = discVector(:,1:discVecIdx);          
           end
-          
-          if ~skipData
-            data.data(:,iChan) = decomp_mef(fileName, indeces(1), ...
-              indeces(lIndeces), '', indexArray.Data.x(:)); 
-          end
 
           data.isContinous = isCont;
-          
           fclose(fid);          
         end
+        
+        if ~skipData
+          data.data(:,iChan) = decomp_mef(fileName, indeces(1), ...
+            indeces(lIndeces), '', indexArray.Data.x(:)); 
+        end
+        
       case 'byBlock'
         error('Return by block is currently not implemented');
         
