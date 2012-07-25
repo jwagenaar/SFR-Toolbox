@@ -1,9 +1,7 @@
 function data = getMefByChannel(obj, channels, indeces, filePath, options)
   %GETMEFBYCHANNEL See infoBinaryByChannel
 
-  
-  % Optional arguments: 'forceContinuous' 'indexByBlock'
-  
+    
   % EXTERNAL FILE REQUIREMENTS (functions)
   % decomp_mef.mex
 
@@ -92,9 +90,6 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
       firstBlock = find( (indeces(1)-1) < indexArray.Data.x(3,:),1) - 1;
       lastBlock  = find( (indeces(lIndeces)-1) < indexArray.Data.x(3,:),1) -1;
 
-      data.firstBlock = firstBlock;
-      data.lastBlock = lastBlock;
-
       % Iterate over included blocks and get 'continuous' flags.
       discVector = zeros(2, 10);
       discVector(:,1) = indexArray.Data.x([1 3],firstBlock);
@@ -113,7 +108,10 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
         isCont = isCont && curIsCont;
         if ~curIsCont
           discVecIdx = discVecIdx +1;
-          discVector(:,discVecIdx)  = indexArray.Data.x([1 3], iBlock); 
+          
+          discVector(1,discVecIdx)  = indexArray.Data.x(1, iBlock); 
+          discVector(2,discVecIdx)  = indexArray.Data.x(3, iBlock) +1; 
+          
         end
       end
       fclose(fid);    

@@ -7,17 +7,23 @@ function out = infoMefByChannel(obj, locPath, option)
   %   Required attributes:
   %     none
   %   Optional attributes:
-  %     'indexByBlock' (false) : Instead of providing the indeces in the data,
-  %     the Blocks are indexed such that data(1:2,1) returns the first block of
-  %     continuous data in the MEF file. The returned values are 
+  %     'getByIndex'  Returns the requested indeces (Default behavior)
+  %     'getByBlock'  Currently not implemented.
+  %     'skipData'    Only returns the discontinuity matrix and no data for the
+  %                   supplied indeces.
+  %     'skipCheck'   Returns the data without checking whether it is continuous.
+  %                   This will improve the response time.
   %
-  %   The 'init' option is called by the constructor method of the SFREPOS
-  %   class and should return a structure with the properties: 'requiredAttr',
-  %   'optionalAttr', 'size' and 'format'.
+  %   The data is returned as a structure instead of a matrix. The reason is
+  %   that the returned indeces are not necessary continuous. The returned
+  %   structure has a flag that indicates whether the returned results are
+  %   continuous.
   %
-  %   The 'info' option is called when the user accesses the 'attr' property of
-  %   the object and should return any other information that is available in
-  %   the files associated with this object.
+  %   It also contains a 2xn matrix that contains the timestamp and the index
+  %   number of where discontinuities are detected. Each column represents a
+  %   continuous section. The first row contains the timestamp of the first
+  %   value of the block and the second row contains the index of the first
+  %   value of a block.
   %
   %   NOTE: You do not have to include the 'size' and 'format' attributes in the
   %   structure that is returned by the 'info' option. These attributes are
