@@ -85,50 +85,54 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
       fprintf(' ...done.\n');  
       indexArray = obj.userData(channels(iChan)).map;
     end
+    
+    % Check continuity during first call
+    if ~skipCheck && iChan == 1
+      % Check continuous
+      firstBlock = find( (indeces(1)-1) < indexArray.Data.x(3,:),1) - 1;
+      lastBlock  = find( (indeces(lIndeces)-1) < indexArray.Data.x(3,:),1) -1;
+
+      data.firstBlock = firstBlock;
+      data.lastBlock = lastBlock;
+
+      % Iterate over included blocks and get 'continuous' flags.
+      discVector = zeros(2, 10);
+      discVector(:,1) = indexArray.Data.x([1 3],firstBlock);
+      discVecIdx = 1;
+      isCont = true;
+      fid = fopen(fileName);
+      bytesSkip = sum([4 4 8 4 4 6]);
+      for iBlock = (firstBlock+1) : lastBlock
+        skip = int64(indexArray.Data.x(2,iBlock) + bytesSkip);
+        status = fseek(fid, skip, 'bof');
+        if status < 0
+          display(ferror(fid));
+        end
+
+        curIsCont = ~fread(fid,1,'uint8');
+        isCont = isCont && curIsCont;
+        if ~curIsCont
+          discVecIdx = discVecIdx +1;
+          discVector(:,discVecIdx)  = indexArray.Data.x([1 3], iBlock); 
+        end
+      end
+      fclose(fid);    
+      
+    end
       
     switch getMethod
       case 'byIndex'
         data = struct('data',[],...
-          'isContinous',false, 'discontVec', []);
-        if ~skipCheck
-          % Check continuous
-          firstBlock = find( (indeces(1)-1) < indexArray.Data.x(3,:),1) - 1;
-          lastBlock  = find( (indeces(lIndeces)-1) < indexArray.Data.x(3,:),1) -1;
-
-          data.firstBlock = firstBlock;
-          data.lastBlock = lastBlock;
-
-          % Iterate over included blocks and get 'continuous' flags.
-          discVector = zeros(2, 10);
-          discVector(:,1) = indexArray.Data.x([1 3],firstBlock);
-          discVecIdx = 1;
-          isCont = true;
-          fid = fopen(fileName);
-          bytesSkip = sum([4 4 8 4 4 6]);
-          for iBlock = (firstBlock+1) : lastBlock
-            skip = int64(indexArray.Data.x(2,iBlock) + bytesSkip);
-            status = fseek(fid, skip, 'bof');
-            if status < 0
-              display(ferror(fid));
-            end
-
-            isCont = ~fread(fid,1,'uint8');
-            if ~isCont
-              discVecIdx = discVecIdx +1;
-              discVector(:,discVecIdx)  = indexArray.Data.x(1:2,iBlock); 
-            end
-          end
-          if discVecIdx
-            data.discontVec = discVector(:,1:discVecIdx);          
-          end
-
-          data.isContinous = isCont;
-          fclose(fid);          
-        end
+          'isContinous',isCont, 'discontVec', []);
         
         if ~skipData
           data.data(:,iChan) = decomp_mef(fileName, indeces(1), ...
             indeces(lIndeces), '', indexArray.Data.x(:)); 
+        end
+        
+        % Add discont vector to output.
+        if discVecIdx
+          data.discontVec = discVector(:,1:discVecIdx);          
         end
         
       case 'byBlock'
