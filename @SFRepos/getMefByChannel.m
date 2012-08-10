@@ -47,13 +47,17 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
           getMethod = 'byIndex';
         case 'skipCheck'
           skipCheck = options.skipCheck;
+          isCont = nan;
+          discVecIdx = [];
         case 'skipData'
           skipData = options.skipData;
       end
     end
   end
   
-
+  data = struct('data',[],...
+    'isContinous',1, 'discontVec', []);
+  
   for iChan = 1:length(channels)
     
     fileName      = fullfile(filePath, obj.files{channels(iChan)});
@@ -120,12 +124,11 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
       
     switch getMethod
       case 'byIndex'
-        data = struct('data',[],...
-          'isContinous',isCont, 'discontVec', []);
+        
         
         if ~skipData
-          data.data(:,iChan) = decomp_mef(fileName, indeces(1), ...
-            indeces(lIndeces), '', indexArray.Data.x(:)); 
+          data.data(:,iChan) = decomp_mef(fileName, double(indeces(1)), ...
+            double(indeces(lIndeces)), '', indexArray.Data.x(:)); 
         end
         
         % Add discont vector to output.
