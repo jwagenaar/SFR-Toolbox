@@ -1,5 +1,5 @@
 # -- -- -- - SFRepos -- -- -- --
-Version: 1.0.0
+Version: 1.0.1
 
 This toolbox can be used to access scientific data from a variety of different file-formats using standardized syntax. The toolbox assumes that your scientific data consists of continuous data on multiple channels which can be represented by a large 2D array of numerics. In addition, the files may contain some attributes describing the data, which could be loaded into a Matlab structure.
 
