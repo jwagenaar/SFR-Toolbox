@@ -504,9 +504,18 @@ function ToggleNEventButton(src,~)
     names = get(setup.eventButtons,'String');
     
     props = get(setup.eventButtons,'UserData');
-    active = cellfun(@(x) x{1},props) >0;
     
-    names = names(active);
+    if size(props,1) == 1
+      active = props{1};
+      if active
+        names  = {names};
+      else
+        names  = {};
+      end
+    else
+      active = cellfun(@(x) x{1},props) >0;
+      names = names(active);
+    end
     
     if isempty(names)
         set(src,'String','-','UserData',0);
