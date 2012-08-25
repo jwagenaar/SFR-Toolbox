@@ -679,33 +679,33 @@ end
 % METHODS FOR EVENT BUTTON CALLBACKS
 function DoubleEvent_update(src, varargin)             
     
-    setup = guidata(src);
-    
-    %Get eventButtonName
-    eventButtonName = get(src,'String');
-    
-    if ~isfield(setup, [eventButtonName '_lines'])
-      setup.([eventButtonName '_lines']) = zeros(length(setup.lhandles),1);
-      setup.([eventButtonName '_text']) = [];
-      for iEvnt=1: length(setup.lhandles)
-        setup.([eventButtonName '_lines'])(2*(iEvnt-1)+1) = line('Color','g','XData',[],'YData',[],'LineWidth',2);
-        setup.([eventButtonName '_lines'])(2*(iEvnt-1)+2) = line('Color','r','XData',[],'YData',[],'LineWidth',2);
-      end
-    else
-      aux = setup.([eventButtonName '_text']);
-      if ~isempty(aux)
-        delete(aux);
-      end
-      setup.([eventButtonName '_text']) = [];
+  setup = guidata(src);
+
+  %Get eventButtonName
+  eventButtonName = get(src,'String');
+
+  if ~isfield(setup, [eventButtonName '_lines'])
+    setup.([eventButtonName '_lines']) = zeros(length(setup.lhandles),1);
+    setup.([eventButtonName '_text']) = [];
+    for iEvnt=1: length(setup.lhandles)
+      setup.([eventButtonName '_lines'])(2*(iEvnt-1)+1) = line('Color','g','XData',[],'YData',[],'LineWidth',2);
+      setup.([eventButtonName '_lines'])(2*(iEvnt-1)+2) = line('Color','r','XData',[],'YData',[],'LineWidth',2);
     end
-   
-    % Update the events in the current window
-    usrData = get(src, 'userData');
-    eventStr = usrData{2};
-      visMode = usrData{1};
+  else
+    aux = setup.([eventButtonName '_text']);
+    if ~isempty(aux)
+      delete(aux);
+    end
+    setup.([eventButtonName '_text']) = [];
+  end
+
+  % Update the events in the current window
+  usrData = get(src, 'userData');
+  eventStr = usrData{2};
+    visMode = usrData{1};
   
   % Update the events in the current window
-  xdat =  get(setup.lhandles(1),'XData');
+  xdat =  get(setup.lhandles(1),'XData')./setup.sf;
   inclAll = eventStr.startvec > xdat(1) & eventStr.startvec < xdat(end);
   tIdx = 1;
   for i = 1: length(setup.lhandles)
@@ -777,7 +777,7 @@ function SingleEvent_update(src, varargin)
   visMode = usrData{1};
   
   % Update the events in the current window
-  xdat =  get(setup.lhandles(1),'XData');
+  xdat =  get(setup.lhandles(1),'XData')./setup.sf;
   inclAll = eventStr.startvec > xdat(1) & eventStr.startvec < xdat(end);
   tIdx = 1;
   for i = 1: length(setup.lhandles)
@@ -859,7 +859,7 @@ function SingleMarker_update(src,varargin)
     % Update the events in the current window
     ix = 1;
     for i = 1: length(setup.lhandles)
-        xdat =  get(setup.lhandles(i),'XData');
+        xdat =  get(setup.lhandles(i),'XData')./setup.sf;
         if isvalid(setup.([eventButtonName '_handles'])(i))
             
             [~, events, eventNames] = getEvents(setup.([eventButtonName '_handles'])(i), [xdat(1) xdat(end)]);
