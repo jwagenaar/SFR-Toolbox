@@ -30,9 +30,9 @@ function h = sfrviewer(obj, varargin)
     % fails if the user wants to pass 'sf' to the getData method or if the user
     % wants to pass an annotation structure to the getdata method. This should
     % never really happen.
+    getDataAttr  = {};
     if nargin > 3
       curix = 3;
-      getDataAttr  = {};
       getDataAttrI = 1;
       while curix <= length(varargin)
         % Check for annotations:
@@ -191,7 +191,9 @@ function h = sfrviewer(obj, varargin)
           'Callback',@toggleEventButton, ...
           'Parent',bottomPanel2, ...
           'userData',{0 annStruct(iStruct) iStruct});
-       end
+      end
+    else
+      evButtonHandles = [];
     end
     
     set(evntSelect,'String','-');
