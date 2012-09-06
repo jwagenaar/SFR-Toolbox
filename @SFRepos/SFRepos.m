@@ -87,9 +87,8 @@ classdef SFRepos < dynamicprops
     cleanFcn          % Function handle for cleaning up data.
     dataInfo   = struct('size',[0 0], ...
       'format','double') % Information about the data format and size.
-    reqAttr    = {}   % Cell array with required Attributes 
-    optAttr    = {}   % Cell array with optional Attributes.
-  end
+
+  end  
   
   methods
     function delete(obj)
@@ -164,10 +163,6 @@ classdef SFRepos < dynamicprops
         
         % Get File-Format information
         aux = getinfo(obj, 'init');
-
-          
-        obj.reqAttr  = aux.requiredAttr;
-        obj.optAttr  = aux.optionalAttr;
         obj.dataInfo = struct('format',aux.format, 'size',uint64(aux.size));
         
         % Check if loaded typeAttr are required or optional.
@@ -503,9 +498,19 @@ classdef SFRepos < dynamicprops
       %   See also: GETINFO
       
       try
+        curRoot = obj.reposlocation();
+        fNames = fieldnames(curRoot);
+        assert(any(strcmp(obj.rootId,fNames)), 'SciFileRepos:getinfo', ...
+          sprintf(['Unable to find the location: "%s" in the location: "%s" '...
+            'of the current location library.'],obj.rootId, curRoot.locID));
+        
+        curRoot = curRoot.(obj.rootId);
+        filePath = fullfile(curRoot, obj.subPath);
+        
+        attrStruct = obj.infoFcn(obj, filePath, 'attr');        
         
         % Look at supplied attributes.
-        checkReqAttr = false(length(obj.reqAttr),1);
+        checkReqAttr = false(length(attrStruct.reqAttr),1);
         getAttr = struct();
         curIdx = 1;
         if nargin > 3
@@ -514,7 +519,7 @@ classdef SFRepos < dynamicprops
               'Attribute name should be a string');
             
             % Check if attr. is required attr.
-            isReq = find(strcmp(varargin{curIdx},obj.reqAttr),1);
+            isReq = find(strcmp(varargin{curIdx}, attrStruct.reqAttr),1);
             if ~isempty(isReq)
               checkReqAttr(isReq) = true;
               isReq = true;
@@ -523,7 +528,7 @@ classdef SFRepos < dynamicprops
             end
             
             if ~isReq
-              assert(any(strcmp(varargin{curIdx}, obj.optAttr)), ...
+              assert(any(strcmp(varargin{curIdx}, attrStruct.optAttr)), ...
                 'SciFileRepos:getdata',['Supplied attribute not required '...
                 'or optional for this fileformat.']);
             end
@@ -548,14 +553,12 @@ classdef SFRepos < dynamicprops
               getAttr.(varargin{curIdx}) =  true;
               curIdx = curIdx+1;
             end
-            
-            
           end
         end
         
         % Check required attributes
         if ~all(checkReqAttr)
-          missingAttr = obj.reqAttr(~checkReqAttr);
+          missingAttr = attrStruct.reqAttr(~checkReqAttr);
           
           for i = 1:length(missingAttr)
             try
@@ -578,14 +581,6 @@ classdef SFRepos < dynamicprops
           min(indeces) >= 1 && max(indeces) <= obj.dataInfo.size(1),...
           'SciFileRepos:getdata','Index out of range.' );
         
-        curRoot = obj.reposlocation();
-        fNames = fieldnames(curRoot);
-        assert(any(strcmp(obj.rootId,fNames)), 'SciFileRepos:getinfo', ...
-          sprintf(['Unable to find the location: "%s" in the location: "%s" '...
-            'of the current location library.'],obj.rootId, curRoot.locID));
-        
-        curRoot = curRoot.(obj.rootId);
-        filePath = fullfile(curRoot, obj.subPath);
         
         data = obj.dataFcn(obj, channels, indeces, filePath, getAttr);
       catch ME
@@ -745,7 +740,6 @@ classdef SFRepos < dynamicprops
         'Returns the folder where the files are located.'...
         'Returns data from repository.'...
         'Returns attributes associated with data files.'...
-        'Returns information about the fileformat.'...
         'Removes data from transient properties.'...
         'Returns structure with repos locations.'...
         'Returns the methods for objects of class SFRepos.'...
@@ -876,6 +870,7 @@ classdef SFRepos < dynamicprops
           '>Location</a>'],'Unknown', 'Unknown');
       end
       
+      Link4 = sprintf('<a href="matlab:SFRepos.getattrinfo(''%s'')">getOptions</a>',obj.typeId);
       
       if length(obj) == 1 
 
@@ -992,7 +987,7 @@ classdef SFRepos < dynamicprops
 
       % Display methods
       if showLinks
-        display([sprintf('\n  ') Link2 ', ' Link3  sprintf('\n')]);
+        display([sprintf('\n  ') Link2 ', ' Link3 ', ' Link4 sprintf('\n')]);
       end
       
       % --- ---
@@ -1003,6 +998,7 @@ classdef SFRepos < dynamicprops
   end
     
   methods (Static)
+    
     function out = reposlocation(option, locId,  fileName)
       %REPOSLOCATION  Sets/gets the location structure for the file-repositories.
       %   OUT = REPOSLOCATION() Gets the repository locations for the current
@@ -1113,7 +1109,7 @@ classdef SFRepos < dynamicprops
       
       try
         infoFnc = str2func(sprintf('info%s',formatName));
-        out = infoFnc(SFRepos, '', 'attributes');
+        out = infoFnc(SFRepos, '', 'attr');
       catch ME
         isScifi = false;
         if strcmp(ME.identifier, 'MATLAB:UndefinedFunction');

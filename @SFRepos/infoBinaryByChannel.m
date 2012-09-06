@@ -31,6 +31,9 @@ function out = infoBinaryByChannel(obj, locPath, option)
   assert(nargin == 3, 'SciFileRepos:infoMethod', ...
     'Incorrect number of input arguments for infoMethod.');
   
+  requiredAttr = {'Format' 'SwapBytes'};
+  optionalAttr = {};
+  
   switch option
     case 'init'
 
@@ -43,8 +46,8 @@ function out = infoBinaryByChannel(obj, locPath, option)
         );
 
       % Set required and optional attributes.
-      out.requiredAttr = {'Format' 'SwapBytes'};
-      out.optionalAttr = {}; % No optional attributes.
+      out.requiredAttr = requiredAttr;
+      out.optionalAttr = optionalAttr; % No optional attributes.
 
       % Find number of channels.
       nrChannels = length(obj.files);
@@ -63,6 +66,13 @@ function out = infoBinaryByChannel(obj, locPath, option)
       out.format = obj.typeAttr.Format;      
     case 'info'
       out = []; %no additional attributes for this file type.
+    case 'attr'
+      out = struct(...
+        'reqAttr', [], ...
+        'optAttr', []);
+      out.reqAttr = requiredAttr;
+      out.optAttr = optionalAttr;
+      
     otherwise
       error('SciFileRepos:getattr','Incorrect option: %s',option);
   end

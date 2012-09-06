@@ -41,6 +41,8 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
     optNames = fieldnames(options);
     for i = 1:length(optNames)
       switch optNames{i}
+        case 'getByTime'
+          getMethod = 'byTime';
         case 'getByBlock'
           getMethod = 'byBlock';
         case 'getByIndex'
@@ -55,16 +57,23 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
     end
   end
   
-  data = struct('data',[],...
-    'isContinous',1, 'discontVec', []);
+  data = struct(...
+    'data',[], ...
+    'isContinous',1, ...
+    'discontVec', []);
   
+  
+  % Iterate over each channel and read data. 
   for iChan = 1:length(channels)
     
+    % Get fileName for channel.
     fileName      = fullfile(filePath, obj.files{channels(iChan)});
     
     % Get information from mef header and index
     indexArray = obj.userData(channels(iChan)).map;
 
+    % If Map is not previously loaded, load map and store map in temporary
+    % location. 
     if isempty(indexArray)
 
       % Start Timer for showing progress for reading header.
@@ -88,7 +97,8 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
       indexArray = obj.userData(channels(iChan)).map;
     end
     
-    % Check continuity during first call
+    % Check continuity during first call. Assumes all channels are continuous
+    % for a given time. Channels cannot be discontinuous in different times. 
     if ~skipCheck && iChan == 1
       % Check continuous
       firstBlock = find( (indeces(1)-1) < indexArray.Data.x(3,:),1) - 1;
@@ -112,10 +122,8 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
         isCont = isCont && curIsCont;
         if ~curIsCont
           discVecIdx = discVecIdx +1;
-          
           discVector(1,discVecIdx)  = indexArray.Data.x(1, iBlock); 
           discVector(2,discVecIdx)  = indexArray.Data.x(3, iBlock) +1; 
-          
         end
       end
       fclose(fid);    
@@ -138,6 +146,19 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
         
       case 'byBlock'
         error('Return by block is currently not implemented');
+        
+      case 'byTime'
+        % Getting data by Time, indexes are assumed to be timestamps. The
+        % timeindex can only have two values [startTime endTime].
+        
+        assert(length(indeces)==2, ...
+          'When ''IndexByTime'', indeces should be [start stop].');
+        assert(indeces(2) > indeces(1),...
+          'When ''IndexByTime'', index(2) should be larger than index(1).');
+        
+        keyboard;
+        
+        
         
      end
     

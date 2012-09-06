@@ -50,6 +50,10 @@ function out = infoMefByChannel(obj, locPath, option)
   assert(exist('decomp_mef','file') == 3,'SciFileRepos:getMef',...
     'Cannot find the DECOMP_MEF mex file.');
   
+  requiredAttr = {};
+  optionalAttr = {'getByBlock' 'skipData' ...
+        'skipCheck' 'getByIndex' 'getByTime'}; 
+  
   switch option
     case 'init'
 
@@ -62,9 +66,8 @@ function out = infoMefByChannel(obj, locPath, option)
         );
 
       % Set required and optional attributes.
-      out.requiredAttr = {};
-      out.optionalAttr = {'getByBlock' 'skipData' ...
-        'skipCheck' 'getByIndex'}; 
+      out.requiredAttr = requiredAttr;
+      out.optionalAttr = optionalAttr; 
 
       % Find number of channels.
       nrChannels = length(obj.files);
@@ -78,20 +81,25 @@ function out = infoMefByChannel(obj, locPath, option)
       nrValues = mh.number_of_samples;
 
       out.size = [nrValues nrChannels];  
-      out.format = 'int32';
-         
-      case 'info'
-          filePath = fullfile(locPath, obj.files{1});
-          assert(exist(filePath,'file')==2, 'SciFileRepos:sizeBinByChannel',...
-              sprintf('File does not exist:  %s',filePath));
-            
-          mh = read_mef2_header(filePath,'');
-          out.recording_start_time = mh.recording_start_time; % times in us
-          out.recording_end_time = mh.recording_end_time;
-          out.samplingFrequency = mh.sampling_frequency;
-          out.numberOfBlocks = mh.number_of_index_entries;
-          
-          % can add any other data from a mef header
+      out.format = 'int32';         
+    case 'info'
+        filePath = fullfile(locPath, obj.files{1});
+        assert(exist(filePath,'file')==2, 'SciFileRepos:sizeBinByChannel',...
+            sprintf('File does not exist:  %s',filePath));
+
+        mh = read_mef2_header(filePath,'');
+        out.recording_start_time = mh.recording_start_time; % times in us
+        out.recording_end_time = mh.recording_end_time;
+        out.samplingFrequency = mh.sampling_frequency;
+        out.numberOfBlocks = mh.number_of_index_entries;
+
+        % can add any other data from a mef header
+    case 'attr'
+      out = struct(...
+        'reqAttr', [], ...
+        'optAttr', []);
+      out.reqAttr = requiredAttr;
+      out.optAttr = optionalAttr;
           
     otherwise
       error('SciFileRepos:getattr','Incorrect option: %s',option);

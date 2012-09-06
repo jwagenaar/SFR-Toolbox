@@ -23,6 +23,9 @@ function out = infoNicoletEEG(obj, locPath, option)
   assert(nargin == 3, 'SciFileRepos:infoMethod', ...
     'Incorrect number of input arguments for infoMethod.');
   
+  requiredAttr = {};
+  optionalAttr = {};
+  
   switch option
     case 'init'
      % Required output structure for case 'init'.
@@ -33,8 +36,8 @@ function out = infoNicoletEEG(obj, locPath, option)
         'format', [] ...
         );
       
-      out.requiredAttr = {}; % No required attributes.
-      out.optionalAttr = {}; % No optional attributes.
+      out.requiredAttr = requiredAttr; % No required attributes.
+      out.optionalAttr = optionalAttr; % No optional attributes.
       
       f_name = fullfile(locPath, obj.files{1});
       eeg = f_name(end-2:end);
@@ -110,7 +113,12 @@ function out = infoNicoletEEG(obj, locPath, option)
       end
       
       fclose(fid);
-      
+    case 'attr'
+      out = struct(...
+        'reqAttr', [], ...
+        'optAttr', []);
+      out.reqAttr = requiredAttr;
+      out.optAttr = optionalAttr;
     otherwise
       error('SciFileRepos:getattr','Incorrect option: %s',option);
   end
