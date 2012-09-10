@@ -163,17 +163,17 @@ classdef SFRepos < dynamicprops
         
         % Get File-Format information
         aux = getinfo(obj, 'init');
-        obj.dataInfo = struct('format',aux.format, 'size',uint64(aux.size));
+        obj.dataInfo = struct('format',aux.format, 'size',aux.size);
         
         % Check if loaded typeAttr are required or optional.
-        checkReqAttr = false(length(obj.reqAttr),1);
+        checkReqAttr = false(length(aux.requiredAttr),1);
         typeAttrNames = fieldnames(obj.typeAttr);
         for i = 1: length(typeAttrNames)
-          chIndex = find(strcmp(typeAttrNames{i},obj.reqAttr),1);
+          chIndex = find(strcmp(typeAttrNames{i},aux.requiredAttr),1);
           if ~isempty(chIndex)
             checkReqAttr(chIndex) = true;
           else
-            assert(any(strcmp(typeAttrNames{i}, obj.optAttr)),...'
+            assert(any(strcmp(typeAttrNames{i}, aux.optionalAttr)),...'
               'SCIFileRepos:SFRepos',...
               ['Provided TYPE-Attributes are not optional or required for '...
               'this file-format.']);
@@ -574,12 +574,13 @@ classdef SFRepos < dynamicprops
             end
           end
         end
-               
+
+        % SKIP CHECK -- SHOULD BE SOMEWHERE ELSE
         % Check range inputs
-        assert(min(channels) >= 1 && ...
-        max(channels) <= obj.dataInfo.size(2) && ...
-          min(indeces) >= 1 && max(indeces) <= obj.dataInfo.size(1),...
-          'SciFileRepos:getdata','Index out of range.' );
+%         assert(min(channels) >= 1 && ...
+%         max(channels) <= obj.dataInfo.size(2) && ...
+%           min(indeces) >= 1 && max(indeces) <= obj.dataInfo.size(1),...
+%           'SciFileRepos:getdata','Index out of range.' );
         
         
         data = obj.dataFcn(obj, channels, indeces, filePath, getAttr);

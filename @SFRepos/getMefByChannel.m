@@ -22,12 +22,7 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
   assert(exist('decomp_mef','file') == 3,'SciFileRepos:getMef',...
     'Cannot find the DECOMP_MEF mex file.');
   
-  % Check that the indeces are a sorted vector with no missing indeces. 
-  assert(issorted(indeces), 'SciFileRepos:getMEF',...
-    'The GETMEF method only supports continuous sorted indeces.');
-  lIndeces = length(indeces);
-  assert(lIndeces == (indeces(lIndeces)-indeces(1)+1), 'SciFileRepos:getMEF',...
-    'The GETMEF method only supports sorted continuous indeces.');
+
   
   if isempty(obj.userData);
     obj.userData = struct('map',cell(obj.dataInfo.size(2),1)); 
@@ -57,10 +52,28 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
     end
   end
   
+  % Check input argument
+  lIndeces = length(indeces);
+  switch getMethod
+    case 'byIndex'        
+      % Check that the indeces are a sorted vector with no missing indeces. 
+      assert(issorted(indeces), 'SciFileRepos:getMEF',...
+        'The GETMEF method only supports continuous sorted indeces.');
+      assert(lIndeces == (indeces(lIndeces)-indeces(1)+1), 'SciFileRepos:getMEF',...
+        'The GETMEF method only supports sorted continuous indeces.');
+    case 'byTime'
+      assert(length(indeces)==2, ...
+        'When ''IndexByTime'', indeces should be [start stop].');
+      assert(indeces(2) > indeces(1),...
+        'When ''IndexByTime'', index(2) should be larger than index(1).');
+    otherwise
+  end
+  
   data = struct(...
     'data',[], ...
     'isContinous',1, ...
-    'discontVec', []);
+    'discontVec', [],...
+    'startTime');
   
   
   % Iterate over each channel and read data. 
@@ -97,12 +110,80 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
       indexArray = obj.userData(channels(iChan)).map;
     end
     
+    
+    % Get the values using the method determined by GETMETHOD variable.  
+    switch getMethod
+      case 'byIndex'
+        % Set first, last-index for continuity check
+        firstIndex = indeces(1);
+        lastIndex = indeces(lIndeces);
+        
+        if ~skipData
+          data.data(:,iChan) = decomp_mef(fileName, double(firstIndex), ...
+            double(lastIndex), '', indexArray.Data.x(:)); 
+        end
+        
+      case 'byBlock'
+        error('Return by block is currently not implemented');
+        
+      case 'byTime'
+        % Getting data by Time, indexes are assumed to be timestamps. The
+        % timeindex can only have two values [startTime endTime].
+        
+        channelMap = obj.userData(channels(iChan)).map;
+        aux = channelMap.Data.x(1,:);
+        
+        %Get sampling frequency
+        sf = subsref(obj,substruct('.','attr','.','samplingFrequency'));
+        
+       % -- Find First Index
+        firstBiggerBlock = find(aux > (aux(1) + uint64(1e6*indeces(1))),1);
+        timeDif = aux(1) + uint64(1e6*indeces(1)) - aux(1,(firstBiggerBlock-1));
+        sampleOffset = floor(double(timeDif)*(sf*1e-6));
+        firstIndex = channelMap.data.x(3,(firstBiggerBlock-1)) + sampleOffset;
+        
+        %Check that index is not in next block. This can be the case if there is
+        %missing data.
+        if firstIndex >= channelMap.data.x(3,firstBiggerBlock)
+          firstIndex = channelMap.data.x(3, firstBiggerBlock);
+          sampleOffset = 0;
+        end
+        
+        
+%         data.startTime = aux(1,firstBiggerBlock-1) + sampleOffset(
+        
+       % -- Find Last Index
+        firstBiggerBlock = find(aux > (aux(1) + uint64(1e6*indeces(2))),1);
+        if isempty(firstBiggerBlock)
+          firstBiggerBlock = length(aux)+1;
+        end
+        
+        timeDif = aux(1) + uint64(1e6*indeces(2)) - aux(1,(firstBiggerBlock-1));
+        sampleOffset = ceil(double(timeDif)*(sf*1e-6));
+        lastIndex = channelMap.data.x(3,(firstBiggerBlock-1)) + sampleOffset;
+        
+        %Check that Last index is not larger than vector
+        if lastIndex > subsref(obj,substruct('.','attr','.','size','()',{1}));
+         error('Index out of bounds');
+        end
+        
+        
+         
+        
+       % -- Get Data
+        if ~skipData
+          data.data(:,iChan) = decomp_mef(fileName, double(firstIndex), ...
+            double(lastIndex), '', indexArray.Data.x(:)); 
+        end
+        
+    end
+    
     % Check continuity during first call. Assumes all channels are continuous
     % for a given time. Channels cannot be discontinuous in different times. 
     if ~skipCheck && iChan == 1
       % Check continuous
-      firstBlock = find( (indeces(1)-1) < indexArray.Data.x(3,:),1) - 1;
-      lastBlock  = find( (indeces(lIndeces)-1) < indexArray.Data.x(3,:),1) -1;
+      firstBlock = find( (firstIndex-1) < indexArray.Data.x(3,:),1) - 1;
+      lastBlock  = find( (lastIndex-1) < indexArray.Data.x(3,:),1) -1;
 
       % Iterate over included blocks and get 'continuous' flags.
       discVector = zeros(2, 10);
@@ -129,38 +210,11 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
       fclose(fid);    
       
     end
-      
-    switch getMethod
-      case 'byIndex'
-        
-        
-        if ~skipData
-          data.data(:,iChan) = decomp_mef(fileName, double(indeces(1)), ...
-            double(indeces(lIndeces)), '', indexArray.Data.x(:)); 
-        end
-        
-        % Add discont vector to output.
-        if discVecIdx
-          data.discontVec = discVector(:,1:discVecIdx);          
-        end
-        
-      case 'byBlock'
-        error('Return by block is currently not implemented');
-        
-      case 'byTime'
-        % Getting data by Time, indexes are assumed to be timestamps. The
-        % timeindex can only have two values [startTime endTime].
-        
-        assert(length(indeces)==2, ...
-          'When ''IndexByTime'', indeces should be [start stop].');
-        assert(indeces(2) > indeces(1),...
-          'When ''IndexByTime'', index(2) should be larger than index(1).');
-        
-        keyboard;
-        
-        
-        
-     end
+     
+    % Add discont vector to output.
+    if discVecIdx
+      data.discontVec = discVector(:,1:discVecIdx);          
+    end
     
  
 

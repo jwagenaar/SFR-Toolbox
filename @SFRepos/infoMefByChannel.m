@@ -50,7 +50,7 @@ function out = infoMefByChannel(obj, locPath, option)
   assert(exist('decomp_mef','file') == 3,'SciFileRepos:getMef',...
     'Cannot find the DECOMP_MEF mex file.');
   
-  requiredAttr = {};
+  requiredAttr = {'test' 'test2'};
   optionalAttr = {'getByBlock' 'skipData' ...
         'skipCheck' 'getByIndex' 'getByTime'}; 
   
