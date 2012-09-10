@@ -73,7 +73,7 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
     'data',[], ...
     'isContinous',1, ...
     'discontVec', [],...
-    'startTime');
+    'startTime',0);
   
   
   % Iterate over each channel and read data. 
@@ -123,6 +123,22 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
             double(lastIndex), '', indexArray.Data.x(:)); 
         end
         
+        channelMap = obj.userData(channels(iChan)).map;
+        aux = channelMap.Data.x(3,:);
+        
+        %Get sampling frequency
+        sf = subsref(obj,substruct('.','attr','.','samplingFrequency'));
+        
+       % -- Find First Index
+       if ~skipCheck
+        firstBiggerBlock = find(aux > firstIndex,1);
+        timeDiff = uint64(1e6*double(firstIndex - (aux(firstBiggerBlock-1)+1))./sf); 
+        
+        startBlockTime = channelMap.Data.x(1,firstBiggerBlock-1);
+        firstBlockTime =  channelMap.Data.x(1,1);
+        data.startTime = startBlockTime + timeDiff - firstBlockTime;
+       end
+        
       case 'byBlock'
         error('Return by block is currently not implemented');
         
@@ -149,8 +165,8 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
           sampleOffset = 0;
         end
         
-        
-%         data.startTime = aux(1,firstBiggerBlock-1) + sampleOffset(
+        data.startTime = aux(1,firstBiggerBlock-1) + sampleOffset/(sf*1e-6) ...
+                          - aux(1);
         
        % -- Find Last Index
         firstBiggerBlock = find(aux > (aux(1) + uint64(1e6*indeces(2))),1);
@@ -166,9 +182,6 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
         if lastIndex > subsref(obj,substruct('.','attr','.','size','()',{1}));
          error('Index out of bounds');
         end
-        
-        
-         
         
        % -- Get Data
         if ~skipData
@@ -215,12 +228,7 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
     if discVecIdx
       data.discontVec = discVector(:,1:discVecIdx);          
     end
-    
- 
-
   end
-
-
 end
 
 

@@ -7,6 +7,8 @@ function out = infoMefByChannel(obj, locPath, option)
   %   Required attributes:
   %     none
   %   Optional attributes:
+  %     'getByTime'   Get data by time, time is set in INDECES as 
+  %                   [startime endtime] in second offset from start.
   %     'getByIndex'  Returns the requested indeces (Default behavior)
   %     'getByBlock'  Currently not implemented.
   %     'skipData'    Only returns the discontinuity matrix and no data for the
