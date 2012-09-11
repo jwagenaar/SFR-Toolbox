@@ -9,12 +9,25 @@ function out = infoMefByChannel(obj, locPath, option)
   %   Optional attributes:
   %     'getByTime'   Get data by time, time is set in INDECES as 
   %                   [startime endtime] in second offset from start.
+  %
+  %                   Example:
+  %                     out = obj.data([1 10],1,'getByTime') 
+  %
   %     'getByIndex'  Returns the requested indeces (Default behavior)
+  %
   %     'getByBlock'  Currently not implemented.
+  %
   %     'skipData'    Only returns the discontinuity matrix and no data for the
   %                   supplied indeces.
+  %         
   %     'skipCheck'   Returns the data without checking whether it is continuous.
   %                   This will improve the response time.
+  %
+  %     'padNan'      Pads the data with Nan where it is discontinuous. This
+  %                   automatically sets the 'isContinuous' flag to true.
+  %       
+  %                   Example:
+  %                     out = obj.data([1 10000],1:4,'getByTime','padNan');
   %
   %   The data is returned as a structure instead of a matrix. The reason is
   %   that the returned indeces are not necessary continuous. The returned
@@ -52,9 +65,9 @@ function out = infoMefByChannel(obj, locPath, option)
   assert(exist('decomp_mef','file') == 3,'SciFileRepos:getMef',...
     'Cannot find the DECOMP_MEF mex file.');
   
-  requiredAttr = {'test' 'test2'};
+  requiredAttr = {};
   optionalAttr = {'getByBlock' 'skipData' ...
-        'skipCheck' 'getByIndex' 'getByTime'}; 
+        'skipCheck' 'getByIndex' 'getByTime' 'padNan'}; 
   
   switch option
     case 'init'
