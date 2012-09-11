@@ -202,18 +202,18 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
     % for a given time. Channels cannot be discontinuous in different times. 
     if ~skipCheck && iChan == 1
       % Check continuous
-      firstBlock = find( (firstIndex-1) < indexArray.Data.x(3,:),1) - 1;
-      lastBlock  = find( (lastIndex-1) < indexArray.Data.x(3,:),1) -1;
+      firstBlock = find( firstIndex < indexArray.Data.x(3,:),1) - 1;
+      lastBlock  = find( lastIndex < indexArray.Data.x(3,:),1) - 1;
 
       % Iterate over included blocks and get 'continuous' flags.
-      discVector = zeros(2, 10);
+      discVector = zeros(2, 10, 'uint64');
       
       % Make sure the first column in discVector corresponds with first sample
       % in returned result.
       FB = indexArray.Data.x([1 3],firstBlock);
       
-      startTime = ((firstIndex-1)-FB(2))*(sf*1e-6) + FB(1);
-      discVector(:,1) = [startTime firstIndex-1];
+      startTime = ((firstIndex-1)-FB(2))./(sf*1e-6) + FB(1);
+      discVector(:,1) = [startTime firstIndex];
       discVecIdx = 1;
       isCont = true;
       fid = fopen(fileName);
