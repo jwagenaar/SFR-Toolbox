@@ -43,7 +43,6 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
           getMethod = 'byIndex';
         case 'skipCheck'
           skipCheck = options.skipCheck;
-          isCont = nan;
           discVecIdx = [];
         case 'skipData'
           skipData = options.skipData;
@@ -60,20 +59,36 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
   
   
   % Check input argument
-  lIndeces = length(indeces);
+  
   switch getMethod
     case 'byIndex'        
       % Check that the indeces are a sorted vector with no missing indeces. 
       assert(issorted(indeces), 'SciFileRepos:getMEF',...
         'The GETMEF method only supports continuous sorted indeces.');
-      assert(lIndeces == (indeces(lIndeces)-indeces(1)+1), 'SciFileRepos:getMEF',...
+      assert(length(indeces) == (indeces(end)-indeces(1)+1), 'SciFileRepos:getMEF',...
         'The GETMEF method only supports sorted continuous indeces.');
+        
+      % Set rawData
+      lIndeces = length(indeces);
+      rawData = zeros(lIndeces,length(channels),'int32');
     case 'byTime'
       assert(length(indeces)==2, ...
         'When ''IndexByTime'', indeces should be [start stop].');
       assert(indeces(2) > indeces(1),...
         'When ''IndexByTime'', index(2) should be larger than index(1).');
+      
+      % Set rawData
+      % Get sampling frequency
+      sf = subsref(obj,substruct('.','attr','.','samplingFrequency'));
+      
+      % Get the number of samples that you would expect based on the start
+      % and end-time. Make sure that it is accurate for very large numbers.
+      % The sampling frequency is estimated up to 4 digits accuracy.
+      lIndeces = idivide(diff(indeces)*uint64(sf*10000),uint64(1e10),'ceil');
+      rawData = zeros(lIndeces,length(channels),'int32');
+      
     otherwise
+      error('Incorrect getMethod for GETMEFBYCHANNEL function');
   end
   
   data = struct(...
@@ -126,7 +141,7 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
         lastIndex = indeces(lIndeces);
         
         if ~skipData
-          data.data(1:lIndeces, iChan) = decomp_mef(fileName, double(firstIndex), ...
+          rawData(1:lIndeces, iChan) = decomp_mef(fileName, double(firstIndex), ...
             double(lastIndex), '', indexArray.Data.x(:)); 
         end
         
@@ -142,7 +157,7 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
         timeDiff = uint64(1e6*double(firstIndex - (aux(firstBiggerBlock-1)+1))./sf); 
         
         startBlockTime = channelMap.Data.x(1,firstBiggerBlock-1);
-        firstBlockTime =  channelMap.Data.x(1,1);
+        firstBlockTime = channelMap.Data.x(1,1);
         data.startTime = startBlockTime + timeDiff - firstBlockTime;
        end
         
@@ -192,8 +207,9 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
         
        % -- Get Data
         if ~skipData
-          data.data(:,iChan) = decomp_mef(fileName, double(firstIndex), ...
+          aux = decomp_mef(fileName, double(firstIndex), ...
             double(lastIndex), '', indexArray.Data.x(:)); 
+          rawData(1:size(aux,1),iChan) = aux;
         end
         
     end
@@ -213,7 +229,7 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
       FB = indexArray.Data.x([1 3],firstBlock);
       
       startTime = ((firstIndex-1)-FB(2))./(sf*1e-6) + FB(1);
-      discVector(:,1) = [startTime firstIndex];
+      discVector(:,1) = [startTime 1];
       discVecIdx = 1;
       isCont = true;
       fid = fopen(fileName);
@@ -230,7 +246,7 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
         if ~curIsCont
           discVecIdx = discVecIdx +1;
           discVector(1,discVecIdx)  = indexArray.Data.x(1, iBlock); 
-          discVector(2,discVecIdx)  = indexArray.Data.x(3, iBlock) +1; 
+          discVector(2,discVecIdx)  = indexArray.Data.x(3, iBlock) - firstIndex + 1; 
         end
       end
       data.isContinuous =  isCont;
@@ -241,7 +257,8 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
 
   end
   
-  % PADNAN pad discontinuities with NAN if requested.
+  % PADNAN pad discontinuities with NAN if requested. This automatically
+  % casts the results as Doubles (otherwise NAN is not NAN)
   if padNan && ~data.isContinuous
     data.isContinuous = true;
     
@@ -251,27 +268,31 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
     sf    = subsref(obj,substruct('.','attr','.','samplingFrequency')); 
 
     % Find the total number of NaN's that need to be inserted.
-    missingIdx = ceil(diSz+((di(1,diSz)-di(1,1))*(sf*1e-6)) + (di(2,1)) - di(2,diSz));
+    totalIndex = idivide(((di(1,diSz)-di(1,1)))*uint64(10000*sf),1e10,'ceil');
+    
+    missingIdx = diSz + totalIndex - ( di(2,diSz) - di(2,1) );
 
     % Pad data array
-    data.data = [data.data ;nan(missingIdx,length(channels))];    
+    newLindeces = size(rawData,1);
+    rawData = [double(rawData) ;NaN(missingIdx,length(channels),'double')];    
 
     % Move data and replace Nan.
-    newLindeces = lIndeces;
     for ii = 2:diSz
-      missingIdx = ceil(((di(1,ii)-di(1,ii-1))*(sf*1e-6)) + (di(2,ii-1)) - di(2,ii));
+      totalBlockIndex = idivide(((di(1,ii)-di(1,ii-1)))*uint64(10000*sf),...
+        1e10,'ceil');
+      missingBlockIdx = totalBlockIndex - (di(2,ii)-di(2,ii-1));
 
-      data.data(di(2,ii)+missingIdx:newLindeces+missingIdx,:) = ...
-        data.data(di(2,ii):newLindeces,:);
-      data.data(di(2,ii):di(2,ii)+missingIdx-1,:) = nan;
+      % Shift data and replace with NaN's
+      rawData = shiftdata(rawData, di(2,ii), missingBlockIdx, newLindeces);
 
-      di(2,ii:diSz) = di(2,ii:diSz) + missingIdx;
-      newLindeces = newLindeces + missingIdx;
+      di(2,ii:diSz) = di(2,ii:diSz) + missingBlockIdx;
+      newLindeces   = newLindeces + missingBlockIdx;
     end
-
+    
     discVector = di;
   end
   
+  data.data = rawData;
   % Add discont vector to output.
   if discVecIdx
     data.discontVec = discVector;      
@@ -280,4 +301,9 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
   
 end
 
-
+%Sub-routines
+function data = shiftdata(data, index, shift, datalength)
+    data(index + shift:datalength + shift,:) = ...
+        data(index:datalength,:);
+    data(index:index+shift-1,:) = NaN;
+end
