@@ -298,6 +298,11 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
     totalIndex = ceil( (di(1,diSz)-di(1,1))*(sf*1e-6) );
     missingIdx = diSz +  totalIndex - ( di(2,diSz) - di(2,1) );
 
+    %Limit Maximum padding
+    if missingIdx > diSz*1e5;
+      missingIdx = diSz*1e5;
+    end
+    
     % Pad data array
     newLindeces = size(rawData,1);
     rawData = [double(rawData) ;NaN(missingIdx,length(channels),'double')];    
@@ -306,6 +311,11 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
     for ii = 2:diSz
       totalBlockIndex = ceil((di(1,ii)-di(1,1)) * (sf*1e-6));
       missingBlockIdx = totalBlockIndex - (di(2,ii) - di(2,1));
+      
+      if missingBlockIdx > 1e5
+        fprintf(2, 'Maximum padding for block: %03.0f',ii+1);
+        missingBlockIdx = 1e5;
+      end
 
       % Shift data and replace with NaN's
       rawData = shiftdata(rawData, di(2,ii), missingBlockIdx, newLindeces);
