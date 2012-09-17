@@ -264,9 +264,9 @@ classdef SFRepos < dynamicprops
 
                 % Check precision of the indeces. This is way faster than
                 % automatically change to uint64 even if it not necessary. This
-                % should in reality never be an issue (maxValue approx > 1e14).
+                % should in reality never be an issue (maxValue approx > 5e15).
                 if isa(valueIndeces, 'double') || isa(valueIndeces, 'single')
-                  if eps(max(valueIndeces)) > 0.01
+                  if eps(max(valueIndeces)) > 0.5
                     error('SciFileRepos:subsref', ...
                       [' Unable to use ''double/single'' precision for indeces ' ...
                       'of this magnitude.\n Please use ''uint64'' for '...
