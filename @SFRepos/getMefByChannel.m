@@ -213,7 +213,8 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
         %Check that index is not in next block. This can be the case if there is
         %missing data.
         if firstIndex >= channelMap.data.x(3, firstBiggerBlock)
-          firstIndex = double(channelMap.data.x(3, firstBiggerBlock));
+          firstIndex0 = double(channelMap.data.x(3, firstBiggerBlock));
+          firstIndex0 = firstIndex0 + 1; 
           sampleOffset = 0;
         end
         
@@ -304,7 +305,7 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
     end
     
     % Pad data array
-    newLindeces = size(rawData,1);
+    newLindeces = size(rawData,1);0
     rawData = [double(rawData) ;NaN(missingIdx,length(channels),'double')];    
 
     % Move data and replace Nan.
