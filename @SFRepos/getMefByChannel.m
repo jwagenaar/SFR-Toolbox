@@ -91,6 +91,8 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
       % Get the number of samples that you would expect based on the start
       % and end-time. Make sure that it is accurate for very large numbers.
       % The sampling frequency is estimated up to 4 digits accuracy.
+%       lIndeces = (diff(indeces)*sf)./1e6;
+      
       lIndeces = idivide(diff(indeces)*uint64(sf*10000), uint64(1e10), 'ceil');
       rawData  = zeros(lIndeces,length(channels), 'int32');
       
@@ -201,7 +203,7 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
         firstBiggerBlock = find(iMap > firstIndexTime, 1);
         firstBlock = firstBiggerBlock -1;
         firstBlock0 = firstBlock - 1;
-        lastBlock  = find(secondIndexTime >= iMap, 1,'last'); 
+        lastBlock  = find(secondIndexTime >=iMap, 1,'last'); 
         lastBlock0 = lastBlock -1;
         
         timeDif = firstIndexTime - iMap(firstBlock);
@@ -212,19 +214,22 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
         
         %Check that index is not in next block. This can be the case if there is
         %missing data.
-        if firstIndex >= channelMap.data.x(3, firstBiggerBlock)
+        if firstIndex0 >= channelMap.data.x(3, firstBiggerBlock)
           firstIndex0 = double(channelMap.data.x(3, firstBiggerBlock));
-          firstIndex0 = firstIndex0 + 1; 
+          firstIndex = firstIndex0 + 1; 
           sampleOffset = 0;
         end
         
         data.startTime = iMap(1,firstBlock) + sampleOffset/(sf*1e-6);
-        
-        
+       
         timeDif2 = secondIndexTime - iMap(1, lastBlock);
         sampleOffset2 = ceil(timeDif2*(sf*1e-6));
         lastIndex0 = double(channelMap.data.x(3,lastBlock)) + sampleOffset2;
         lastIndex = lastIndex0 +1;
+        
+        if lastIndex0 >= channelMap.data.x(3, lastBlock+1)
+          lastIndex = channelMap.data.x(3, lastBlock+1) - 1;
+        end
         
         %Check that Last index is not larger than vector
         if lastIndex > subsref(obj,substruct('.','attr','.','size','()',{1}));
@@ -298,25 +303,25 @@ function data = getMefByChannel(obj, channels, indeces, filePath, options)
     % Find the total number of NaN's that need to be inserted.
     totalIndex = ceil( (di(1,diSz)-di(1,1))*(sf*1e-6) );
     missingIdx = diSz +  totalIndex - ( di(2,diSz) - di(2,1) );
-
-    %Limit Maximum padding
-    if missingIdx > diSz*1e5;
-      missingIdx = diSz*1e5;
-    end
-    
+% 
+%     %Limit Maximum padding
+%     if missingIdx > diSz*1e4;
+%       missingIdx = diSz*1e4;
+%     end
+%     
     % Pad data array
-    newLindeces = size(rawData,1);0
+    newLindeces = size(rawData,1);
     rawData = [double(rawData) ;NaN(missingIdx,length(channels),'double')];    
 
     % Move data and replace Nan.
     for ii = 2:diSz
       totalBlockIndex = ceil((di(1,ii)-di(1,1)) * (sf*1e-6));
-      missingBlockIdx = totalBlockIndex - (di(2,ii) - di(2,1));
-      
-      if missingBlockIdx > 1e5
-        fprintf(2, 'Maximum padding for block: %03.0f',ii+1);
-        missingBlockIdx = 1e5;
-      end
+      missingBlockIdx = totalBlockIndex - (di(2,ii) - di(2,1))
+%       
+%       if missingBlockIdx > 1e4
+%         fprintf(2, 'Maximum padding for block: %03.0f\n',ii);
+%         missingBlockIdx = 1e4;
+%       end
 
       % Shift data and replace with NaN's
       rawData = shiftdata(rawData, di(2,ii), missingBlockIdx, newLindeces);
