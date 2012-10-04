@@ -144,6 +144,9 @@ function h = sfrviewer(obj, varargin)
     'Position', [0 0 0.25 1], 'Parent', topPanel,'HorizontalAlignment','left',...
     'FontSize',12,'Tag','title');  
 
+    uicontrol(uihandle,'Style', 'text', 'Units','centimeters', 'String', '|| Scale uV',...
+    'Position', [0.05 0.95 0.25 0.05], 'Parent', centerPanel,'HorizontalAlignment','left',...
+    'FontSize',12,'Tag','y-scale');  
 
     uicontrol(uihandle,'Style', 'pushbutton', 'Units','centimeters', 'String', '<',...
     'Position', [0.1 0.1 2.4 1], 'Callback',@PushBackwards, 'Parent', bottomPanel);
@@ -280,7 +283,10 @@ function cenPanelResize(src,~)
     
     %resize listbox with properties
     listHandle = findobj(get(src,'Children'),'Tag','plotWindow');
-    set(listHandle,'Position',[3 1.5 rpos(3)-3.5 rpos(4)-2]);
+    set(listHandle,'Position',[3 1.5 rpos(3)-3.5 rpos(4)-2.5]);
+    plotpos = get(listHandle,'position');
+    A2 = findobj(src,'Tag','y-scale');
+    set(A2,'position',[plotpos(1) plotpos(4)+plotpos(2) 5 0.6]); 
 end
 
 % GLOBAL UPDATE FUNCTIONS
@@ -328,6 +334,12 @@ function updateRaw(src, ~)
 
 	set(axesHandle,'XLim',[min(time) max(time)]);	
 	
+  yscaleText = sprintf('[ %3.5f %s/div ]',...
+      setup.objHandles.attr.gain*(setup.compression), ...
+      setup.objHandles.attr.units);
+  A2 =findobj(get(src,'Parent'),'Tag','y-scale'); 
+  set(A2,'String',yscaleText);
+  
 	guidata(src, setup);
 end
 
@@ -375,6 +387,13 @@ function ZoomInY(src, ~)
         set(setup.lhandles(i),'YData', aux +i);    
     end
     
+    yscaleText = sprintf('[ %3.5f %s/div ]',...
+      setup.objHandles.attr.gain*(setup.compression), ...
+      setup.objHandles.attr.units);
+    cenP = findobj(get(gcf,'Children'),'Tag','cenP');   
+    A2 = findobj(cenP,'Tag','y-scale');
+    set(A2,'String',yscaleText);
+    
     guidata(src, setup)
 end
 
@@ -390,7 +409,12 @@ function ZoomOutY(src, ~)
         aux = aux * (oldCompress./setup.compression);
         set(setup.lhandles(i),'YData', aux +i);    
     end
-    
+    yscaleText = sprintf('[ %3.5f %s/div ]',...
+      setup.objHandles.attr.gain*(setup.compression), ...
+      setup.objHandles.attr.units);
+    cenP = findobj(get(gcf,'Children'),'Tag','cenP');   
+    A2 = findobj(cenP,'Tag','y-scale');
+    set(A2,'String',yscaleText);
     guidata(src, setup)
 end
 
@@ -558,13 +582,36 @@ function NextEvnt(src, ~, direction)
           
           if direction
 
-              NextRes = usrData{2}.startvec(find(usrData{2}.startvec > Xlim,1));
+            while 1
+              % Find next index within displayed columns
+              NextIdx = find(usrData{2}.startvec > Xlim,1);
+              
+              if any(usrData{2}.chvec(NextIdx) == setup.cols)
+                break
+              elseif isempty(NextIdx)
+                break
+              end
+              Xlim = usrData{2}.startvec(NextIdx);
+            end
+              NextRes = usrData{2}.startvec(NextIdx);
               if ~isempty(NextRes)
                   NextEvnt = min([NextEvnt NextRes]);
               end
           else
+              while 1
+                % Find previous index within displayed columns
+                PrevIdx = find(usrData{2}.startvec < Xlim,1,'last');
 
-              prevRes = usrData{2}.startvec(find(usrData{2}.startvec < Xlim,1,'last'));
+                if any(usrData{2}.chvec(PrevIdx) == setup.cols)
+                  break
+                elseif isempty(PrevIdx)
+                  break
+                end  
+                Xlim = usrData{2}.startvec(PrevIdx);
+              end
+            
+            
+              prevRes = usrData{2}.startvec(PrevIdx);
               if ~isempty(prevRes)
                   NextEvnt = max([NextEvnt prevRes ]);
               end

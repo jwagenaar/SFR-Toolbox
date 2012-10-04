@@ -52,6 +52,47 @@ classdef SFRepos < dynamicprops
   %
   %     For example: DATAATTR = {'chNames' {'Ch1' 'Ch2' 'Ch3' 'Ch4'}}
   %
+  %   <DEFAULT ATTRIBUTES>
+  %   The SFR-Toolbox automatically associates two attributes with an
+  %   object: 1) gain = 1, and 2) units = 'units'. These attributes can be
+  %   re-defined using the ADDATTR method or be included in the constructor
+  %   as DATAATTRIBUTES. The gain attribute is a multiplier that will
+  %   transform the data from the saved values to the units described in
+  %   the 'unit' attribute (This is usually 1). The 'units' attribute is a
+  %   string that indicates the units of the recorded signal (i.e. uV, mV,
+  %   etc.).
+  %
+  %   <GET-DATA REQUIREMENTS>
+  %   The SFR-Toolbox requires that the specific GETDATA method for a particular
+  %   file-type adheres to the following output options:
+  %
+  %    1) The GETDATA method returns a two-dimensional array, with one column
+  %       for each channel.
+  %    2) The GETDATA method returna a structure with at least one property
+  %       called: 'data', which contains a two-dimensional array, with one
+  %       column for each channel.
+  %
+  %   This ensures that all file-types can be accessed using the same syntax,
+  %   and leaves the option open to return additional information with the data
+  %   if necessary.
+  %
+  %   <STANDARD GET OPTIONS>
+  %   The SFR-Toolbox allows you to provide option-parameters to the get-data
+  %   method using the syntax: OBJ.DATA(INDECES, CHANNEL, 'option1',...)
+  %
+  %   Available options are declared per TYPE in the INFO[METHOD] file. There
+  %   are two standard options that are available for all TYPES. 
+  %
+  %    1) 'asStruct' : If you supply this option, the results returned from
+  %       the GET-Method are forced to be a structure. The actual data should be
+  %       in a property called 'data'. If the specific GET-Method returns a 2
+  %       dimensional array, the SFR-Repos toolbox will create a structure with
+  %       as single property 'data'.
+  %    2) 'asArray' : If you supply this option, the results returned from
+  %       the GET-Method are forced to be a two-dimensional array. If the
+  %       specific GET-Method returns a structure, the SFR-Toolbox will only
+  %       return the data from the property 'data' in the structure.
+  %
   %
   %   See also: ADDATTR GETDATA CLEANUP
 
@@ -107,6 +148,7 @@ classdef SFRepos < dynamicprops
   end
   
   methods (Sealed)
+        
     function obj = SFRepos(type, rootID, subPath, files, ...
       typeAttr, dataAttr)
       
@@ -115,7 +157,7 @@ classdef SFRepos < dynamicprops
       
       try
         % Otherwise, at least 4 inputs.
-        error(nargchk(4, 6, nargin));
+        narginchk(4, 6)
 
         % check inputs:
         assert(ischar(type), 'SCIFileRepos:SFRepos',...
@@ -133,7 +175,7 @@ classdef SFRepos < dynamicprops
 
         obj.typeId   = type;
         obj.rootId   = rootID;
-        obj.subPath  = subPath;
+        obj.subPath  = regexprep(subPath,'\','/');
         obj.files    = files;
         obj.typeAttr = struct();
 
@@ -207,7 +249,7 @@ classdef SFRepos < dynamicprops
       
       
     end
-
+    
     function varargout = subsref(obj, s)
       
       try
@@ -463,6 +505,16 @@ classdef SFRepos < dynamicprops
               end
             end 
             
+            % Add default Units and Gain if not specified.
+            allFields = fieldnames(info);
+            if ~any(strcmp(allFields, 'gain'))
+              info.gain = 1;
+            end
+            if ~any(strcmp(allFields, 'units'))
+              info.units = 'unit';
+            end
+            
+            
           case 'init'
             info = obj.infoFcn(obj, filePath,'init');
         end
@@ -505,7 +557,9 @@ classdef SFRepos < dynamicprops
             'of the current location library.'],obj.rootId, curRoot.locID));
         
         curRoot = curRoot.(obj.rootId);
-        filePath = fullfile(curRoot, obj.subPath);
+        
+        subP = regexprep(obj.subPath,'\','/');
+        filePath = fullfile(curRoot, subP);
         
         attrStruct = obj.infoFcn(obj, filePath, 'attr');        
         
@@ -527,7 +581,7 @@ classdef SFRepos < dynamicprops
               isReq = false;
             end
             
-            if ~isReq
+            if ~isReq && ~any(strcmp(varargin{curIdx}, {'asStruct','asArray'}))
               assert(any(strcmp(varargin{curIdx}, attrStruct.optAttr)), ...
                 'SciFileRepos:getdata',['Supplied attribute not required '...
                 'or optional for this fileformat.']);
@@ -999,6 +1053,16 @@ classdef SFRepos < dynamicprops
   end
     
   methods (Static)
+    
+    function obj = loadobj(obj)
+      % This function is called when the object is loaded from disk. It can
+      % be used to update objects before they are available in the matlab
+      % console.
+      
+      % Replace backward slash with forward slash during load. New objects
+      % have this checked in constructor.
+      obj.subPath = regexprep(obj.subPath,'\','/');
+    end
     
     function out = reposlocation(option, locId,  fileName)
       %REPOSLOCATION  Sets/gets the location structure for the file-repositories.
