@@ -144,9 +144,13 @@ function h = sfrviewer(obj, varargin)
     'Position', [0 0 0.25 1], 'Parent', topPanel,'HorizontalAlignment','left',...
     'FontSize',12,'Tag','title');  
 
-    uicontrol(uihandle,'Style', 'text', 'Units','centimeters', 'String', '|| Scale uV',...
+    uicontrol(uihandle,'Style', 'text', 'Units','centimeters', 'String', '[  ../div]',...
     'Position', [0.05 0.95 0.25 0.05], 'Parent', centerPanel,'HorizontalAlignment','left',...
     'FontSize',12,'Tag','y-scale');  
+  
+    uicontrol(uihandle,'Style', 'text', 'Units','centimeters', 'String', '[Decimation : -]',...
+    'Position', [0.08 0.95 0.25 0.05], 'Parent', centerPanel,'HorizontalAlignment','left',...
+    'FontSize',12,'Tag','decimation');  
 
     uicontrol(uihandle,'Style', 'pushbutton', 'Units','centimeters', 'String', '<',...
     'Position', [0.1 0.1 2.4 1], 'Callback',@PushBackwards, 'Parent', bottomPanel);
@@ -232,6 +236,7 @@ end
 
 % METHODS FOR RESIZING GUI
 function figResize(src,~)			
+  setup = guidata(src);
 	fpos = get(src,'Position');
   children = get(src,'Children');
   topPanel = findobj(children,'Tag','topP');
@@ -264,6 +269,10 @@ function figResize(src,~)
 
   A1 = findobj(centerPanel,'Tag','plotWindow');
   updateRaw(A1);
+  
+  A2 = findobj(centerPanel,'Tag','decimation');
+  set(A2,'String',sprintf('[Decimation: %i ]',setup.decimation));
+  
 end
 
 function topPanelResize(src, ~)		
@@ -287,6 +296,11 @@ function cenPanelResize(src,~)
     plotpos = get(listHandle,'position');
     A2 = findobj(src,'Tag','y-scale');
     set(A2,'position',[plotpos(1) plotpos(4)+plotpos(2) 5 0.6]); 
+    
+    A3 = findobj(src,'Tag','decimation');
+    set(A3,'position',[plotpos(1)+5 plotpos(4)+plotpos(2) 5 0.6]); 
+    
+    
 end
 
 % GLOBAL UPDATE FUNCTIONS
@@ -337,8 +351,14 @@ function updateRaw(src, ~)
   yscaleText = sprintf('[ %3.5f %s/div ]',...
       setup.objHandles.attr.gain*(setup.compression), ...
       setup.objHandles.attr.units);
-  A2 =findobj(get(src,'Parent'),'Tag','y-scale'); 
+    
+  cp = findobj(get(gcf,'Children'),'Tag','cenP');  
+    
+  A2 =findobj(cp,'Tag','y-scale'); 
   set(A2,'String',yscaleText);
+  
+  A3 = findobj(cp,'Tag','decimation');
+  set(A3,'String',sprintf('[Decimation: %i ]',setup.decimation));
   
 	guidata(src, setup);
 end
@@ -901,7 +921,7 @@ function SingleMarker_update(src,varargin)
     end
     
     if ~isempty(setup.([eventButtonName '_text']));
-        aux = setup.([eventButtonName '_text'])
+        aux = setup.([eventButtonName '_text']);
         delete(aux);
     end
     

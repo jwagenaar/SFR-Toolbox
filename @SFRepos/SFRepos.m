@@ -345,6 +345,7 @@ classdef SFRepos < dynamicprops
               obj = out;
             end
 
+
           elseif strcmp(s(1).subs, 'attr')
             if objLength == 1
               obj = getinfo(obj, 'info');
@@ -567,24 +568,30 @@ classdef SFRepos < dynamicprops
         checkReqAttr = false(length(attrStruct.reqAttr),1);
         getAttr = struct();
         curIdx = 1;
+        getMode = 'default';
         if nargin > 3
           while curIdx <= length(varargin)
             assert(ischar(varargin{curIdx}),'SciFileRepos:getdata',...
               'Attribute name should be a string');
             
             % Check if attr. is required attr.
-            isReq = find(strcmp(varargin{curIdx}, attrStruct.reqAttr),1);
-            if ~isempty(isReq)
-              checkReqAttr(isReq) = true;
-              isReq = true;
-            else
-              isReq = false;
-            end
             
-            if ~isReq && ~any(strcmp(varargin{curIdx}, {'asStruct','asArray'}))
-              assert(any(strcmp(varargin{curIdx}, attrStruct.optAttr)), ...
-                'SciFileRepos:getdata',['Supplied attribute not required '...
-                'or optional for this fileformat.']);
+            
+            switch varargin{curIdx}
+              case 'asStruct'
+                getMode = 'asStruct';
+              case 'asArray'
+                getMode = 'asArray';
+              otherwise
+                isReq = find(strcmp(varargin{curIdx}, attrStruct.reqAttr),1);
+                if ~isempty(isReq)
+                  checkReqAttr(isReq) = true;
+                else
+  
+                  assert(any(strcmp(varargin{curIdx}, attrStruct.optAttr)), ...
+                    'SciFileRepos:getdata',['Supplied attribute not required '...
+                    'or optional for this fileformat.']);
+                end
             end
             
             % Check value for attribute if exist
@@ -628,16 +635,23 @@ classdef SFRepos < dynamicprops
             end
           end
         end
-
-        % SKIP CHECK -- SHOULD BE SOMEWHERE ELSE
-        % Check range inputs
-%         assert(min(channels) >= 1 && ...
-%         max(channels) <= obj.dataInfo.size(2) && ...
-%           min(indeces) >= 1 && max(indeces) <= obj.dataInfo.size(1),...
-%           'SciFileRepos:getdata','Index out of range.' );
         
-        
+        % Get Data by calling specific GETDATA function for fileType
         data = obj.dataFcn(obj, channels, indeces, filePath, getAttr);
+        
+        % Modify output if attribute 'asStruct' or 'asArray' is provided.
+        switch getMode
+          case 'default'
+          case 'asArray'
+            if isstruct(data)
+              data = data.data;
+            end
+          case 'asStruct'
+            if ~isstruct(data)
+              data = struct('data',data);
+            end
+        end
+        
       catch ME
         isScifi = false;
         if any(strcmp(ME.identifier, {'MATLAB:UndefinedFunction' ...
