@@ -40,23 +40,25 @@ classdef SFRepos < dynamicprops
   %
   %     For example: TYPEATTR = {'dataClass' 'double'}
   %
-  %   SFREPOS(..., TYPEATTR, DATAATTR) The DATAATTR method can be used to
-  %   add properties and associated values to the current object. The DATAATTR
+  %   SFREPOS(..., TYPEATTR, OBJATTR) The OBJATTR method can be used to
+  %   add properties and associated values to the current object. The OBJATTR
   %   input should be a 1D cell array with alternating 'attributeName' and
-  %   'attributeValue'.
+  %   'attributeValue'. If an attribute does not have a value, it can be
+  %   followed directly by the next attribute name. Note that it is not
+  %   possible to have an attribute-name as the value to another attribute.
   %
   %   Some filetypes will contain meta-data information inside the file while
   %   other filetypes do not have this information embedded. In this case,
   %   meta-data assiated with the data in the files, such as channel names can
   %   be added directly to the object as an attribute. 
   %
-  %     For example: DATAATTR = {'chNames' {'Ch1' 'Ch2' 'Ch3' 'Ch4'}}
+  %     For example: OBJATTR = {'chNames' {'Ch1' 'Ch2' 'Ch3' 'Ch4'}}
   %
   %   <DEFAULT ATTRIBUTES>
   %   The SFR-Toolbox automatically associates two attributes with an
   %   object: 1) gain = 1, and 2) units = 'units'. These attributes can be
   %   re-defined using the ADDATTR method or be included in the constructor
-  %   as DATAATTRIBUTES. The gain attribute is a multiplier that will
+  %   as OBJATTRIBUTES. The gain attribute is a multiplier that will
   %   transform the data from the saved values to the units described in
   %   the 'unit' attribute (This is usually 1). The 'units' attribute is a
   %   string that indicates the units of the recorded signal (i.e. uV, mV,
@@ -228,15 +230,15 @@ classdef SFRepos < dynamicprops
         if nargin == 6
           assert(iscell(dataAttr) && isvector(dataAttr), ...
             'SCIFileRepos:SFRepos',...
-            'DATAATTR input has to be a vector of cells.')
+            'OBJATTR input has to be a vector of cells.')
           assert(mod(length(dataAttr),2)==0, ...
             'SCIFileRepos:SFRepos',...
-            'DATAATTR should have an even number of cells.');
+            'OBJATTR should have an even number of cells.');
 
           names = dataAttr(1:2:(end-1));
           assert(all(cellfun('isclass', names, 'char')), ...
             'SCIFileRepos:SFRepos',...
-            'DATAATTR names should be strings.')
+            'OBJATTR names should be strings.')
 
           obj = addattr(obj, dataAttr{:});
         end
@@ -575,8 +577,6 @@ classdef SFRepos < dynamicprops
               'Attribute name should be a string');
             
             % Check if attr. is required attr.
-            
-            
             switch varargin{curIdx}
               case 'asStruct'
                 getMode = 'asStruct';
