@@ -1,13 +1,19 @@
 function out = annotationstruct(name, type, varargin)
   %ANNOTATIONSTRUCT  Create annotation structure for SFR toolbox.
   %   OUT = ANNOTATIONSTRUCT(NAME, 'SingleEvent', CHVEC, STARTVEC, VALUEVEC)
-  %   returns a structure using the input arguments to the method.
+  %   returns a structure using the input arguments to the method. CHVEC is
+  %   a 1D vector of numerics indicating the channel index associated with
+  %   accompanying STARTVEX, and VALUEVEC indices. A single annotation (i) 
+  %   is described by CHVEC(i), STARTVEC(i), and VALUEVEC(i).
   %  
   %   OUT = ANNOTATIONSTRUCT(NAME, 'DoubleEvent', CHVEC, STARTVEC, STOPVEC,
-  %   VALUEVEC) returns a structure using the input arguments to the method.
+  %   VALUEVEC) returns a structure using the input arguments to the
+  %   method. Double events are similar to the single event annotations but
+  %   have a stop-time in addition to a start-time.
   %
   %   OUT = ANNOTATIONSTRUCT(NAME, 'SingleMarker', STARTVEC, VALUEVEC) returns a
-  %   structure using the input arguments to the method.
+  %   structure using the input arguments to the method. Marker annotations
+  %   are not linked to a particular channel.
   %
   %   This method creates a standardized structure that is used by the
   %   SFR-Toolbox. There are three types of annotations:
@@ -18,6 +24,17 @@ function out = annotationstruct(name, type, varargin)
   %                       channel.
   %     3) SingleMarker : events withoud a duration that are accross all
   %                       channels.
+  %
+  %   Example:  
+  %     ann = annotationstruct('seizure','SingleMarker', [2 5], [1 1])
+  %     ann = annotationstruct('spikes','SingleEvent',[1 1], [1 2], [3 3])
+  %
+  %   See also: SFRVIEWER, SFREPOS
+  
+  % Developer notes: It seems logical to create a different class for the
+  % annotations and maybe this will happen in the future... However, for
+  % now, I think that a simple struct provides all the features needed and
+  % is inherently faster in Matlab.
   
   assert(any(strcmp(type, {'SingleEvent' 'DoubleEvent' 'SingleMarker'})), ...
     ['The TYPE input has to be one of: ''SingleEvent'', ''DoubleEvent'' or '...
