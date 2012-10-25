@@ -598,7 +598,7 @@ classdef SFRepos < dynamicprops
             if length(varargin) > curIdx
               if ischar(varargin{curIdx+1})
                 isAttr = any(strcmp(varargin{curIdx+1}, ...
-                  [attrStruct.reqAttr attrStruct.optAttr]));
+                  [attrStruct.reqAttr attrStruct.optAttr 'asStruct' 'asArray']));
                 if isAttr
                   getAttr.(varargin{curIdx}) =  true;
                   curIdx = curIdx+1;
