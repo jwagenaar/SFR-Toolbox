@@ -53,9 +53,15 @@ function out = infoNicoletEEG(obj, locPath, option)
       header = char(H');
       
       % Find Number of channels
-      l = strfind(header, 'NchanFile =');
-      nchan = str2double(header(l+11:l+14));
-      fclose(fid);
+      tofind = 'NchanFile =';
+      l = strfind(header, tofind);
+      startstr = length(tofind)+1;
+      endstr = startstr;
+      while (double(header(l+endstr))~=10)     % Newline character
+        endstr = endstr+1;
+      end
+      nchan = str2double(header(l+startstr:l+endstr));
+
 
       % For loop to add samples from each file for total samples    
       samples_per_chan = zeros(1,size(obj.files, 1));
