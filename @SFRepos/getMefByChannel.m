@@ -170,7 +170,7 @@ function data = getMefByChannel(obj, channels, indices, filePath, options)
         
         % Get Data if data is not skipped.
         if ~skipData
-                    display(sprintf('start: %i  end: %i',firstIndex, lastIndex));
+%           display(sprintf('start: %i  end: %i',firstIndex, lastIndex));
 
           rawData(1:lIndeces, iChan) = decomp_mef(fileName, firstIndex, ...
             lastIndex, '', indexArray.Data.x(:)); 
@@ -270,7 +270,7 @@ function data = getMefByChannel(obj, channels, indices, filePath, options)
        % -- Get Data
         % DecompMEF is 1 based indexing.
         if firstIndex < lastIndex && ~skipData
-          display(sprintf('start: %i  end: %i',firstIndex, lastIndex));
+%           display(sprintf('start: %i  end: %i',firstIndex, lastIndex));
           aux = decomp_mef(fileName, firstIndex, lastIndex, '', ...
             indexArray.Data.x(:)); 
         else 
@@ -284,8 +284,7 @@ function data = getMefByChannel(obj, channels, indices, filePath, options)
           lData = size(aux,1);
           rawData(1:lData,iChan) = aux;
         end
-          
-        
+                
     end    
     % Prior defined: rawData, firstOffset, lastOffset,
     % 
@@ -338,9 +337,6 @@ function data = getMefByChannel(obj, channels, indices, filePath, options)
       
       % Put last value as last column of discontvec
       discVector = [discVector [endTime ; (lastIndex- firstIndex +1)]]; %#ok<AGROW>
-    else
-      % Return empty discVector if skipCheck is true.
-      discVector = [];
     end
     
       
