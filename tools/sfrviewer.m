@@ -825,7 +825,7 @@ function DoubleEvent_update(src, varargin)
         inclI = find(incl);
         startVI = eventStr.startvec(incl);
         for j = 1:sum(incl)
-          newTextObj = text(startVI(j), i+0.4, ...
+          newTextObj = text(double(startVI(j)), i+0.4, ...
             num2str(eventStr.valuevec(inclI(j))));
           setup.([eventButtonName '_text'])(tIdx) = newTextObj;
           tIdx = tIdx + 1;
@@ -837,7 +837,7 @@ function DoubleEvent_update(src, varargin)
         inclI = find(incl);
         startVI = eventStr.startvec(incl);
         for j = 1:sum(incl)
-          newTextObj = text(startVI(j), i+0.4, ...
+          newTextObj = text(double(startVI(j)), i+0.4, ...
             num2str(eventStr.valuevec(inclI(j))));
           setup.([eventButtonName '_text'])(tIdx) = newTextObj;
           tIdx = tIdx + 1;
