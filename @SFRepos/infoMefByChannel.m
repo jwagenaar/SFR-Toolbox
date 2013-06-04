@@ -107,6 +107,7 @@ function out = infoMefByChannel(obj, locPath, option)
         out.recording_end_time = mh.recording_end_time;
         out.samplingFrequency = mh.sampling_frequency;
         out.numberOfBlocks = mh.number_of_index_entries;
+        out.gain = mh.voltage_conversion_factor;
 
         % can add any other data from a mef header
     case 'attr'

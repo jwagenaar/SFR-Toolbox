@@ -13,6 +13,12 @@ function data = getMefByChannel(obj, channels, indices, filePath, options)
   % of the returned vector. It is possible that the end of the returned
   % vector contains NaN's because the returned vector is trimmed to the
   % requested length.
+  
+  % In 'getByTime' without 'padNan', the time of the first sample can be
+  % different than the returned first sample if there is no data for the
+  % requested start-time. 
+  
+  
     
   % EXTERNAL FILE REQUIREMENTS (functions)
   % decomp_mef.mex
@@ -350,15 +356,9 @@ function data = getMefByChannel(obj, channels, indices, filePath, options)
     di    = discVector;
     diSz  = size(di,2);
     sf    = subsref(obj,substruct('.','attr','.','samplingFrequency')); 
-
-    % Find the total number of NaN's that need to be inserted.
-    totalIndex = ceil( (di(1,diSz) - di(1,1)) * (sf*1e-6) );
-    missingIdx = diSz +  totalIndex - ( di(2,diSz) - di(2,1) );
    
     % Pad data array with NaN's.
     newLindices  = size(rawData, 1);
-    paddedNanVec = NaN(missingIdx, length(channels), 'double');
-    rawData = [double(rawData) ; paddedNanVec];   
 
     % Move data and replace Nan. Skip last index in di
     for ii = 2:(diSz-1)
